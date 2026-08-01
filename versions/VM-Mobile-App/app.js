@@ -52,9 +52,17 @@ const elements = {
   studioPanel: document.getElementById('studioPanel'),
   studioModeTabs: document.getElementById('studioModeTabs'),
   clipWorkspace: document.getElementById('clipWorkspace'),
+  clipVideoDurationLabel: document.getElementById('clipVideoDurationLabel'),
+  clipDurationLabel: document.getElementById('clipDurationLabel'),
   clipRangeLabel: document.getElementById('clipRangeLabel'),
   clipStartRange: document.getElementById('clipStartRange'),
   clipEndRange: document.getElementById('clipEndRange'),
+  clipStartValue: document.getElementById('clipStartValue'),
+  clipEndValue: document.getElementById('clipEndValue'),
+  presetFirst30: document.getElementById('presetFirst30'),
+  presetFullMin: document.getElementById('presetFullMin'),
+  presetMiddle: document.getElementById('presetMiddle'),
+  presetLast30: document.getElementById('presetLast30'),
   imageWorkspace: document.getElementById('imageWorkspace'),
   imgModeThumb: document.getElementById('imgModeThumb'),
   imgModeFrame: document.getElementById('imgModeFrame'),
@@ -62,6 +70,8 @@ const elements = {
   frameSeekRange: document.getElementById('frameSeekRange'),
   frameSeekLabel: document.getElementById('frameSeekLabel'),
   aiDubWorkspace: document.getElementById('aiDubWorkspace'),
+  aiDubInfoText: document.getElementById('aiDubInfoText'),
+  aiDubStatusBadge: document.getElementById('aiDubStatusBadge'),
   dubTargetLangSelect: document.getElementById('dubTargetLangSelect'),
   dubVoiceProfileSelect: document.getElementById('dubVoiceProfileSelect'),
   dubModeSelect: document.getElementById('dubModeSelect'),
@@ -119,6 +129,9 @@ const elements = {
 };
 
 // Studio Mode Tabs Handler (4 Tabs: Full, Clip, Image, AI Dub)
+let imageFormat = 'jpg';
+let aiDubSubmode = 'dub_only';
+
 document.querySelectorAll('.mobile-studio-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.mobile-studio-tab').forEach(t => t.classList.remove('active'));
@@ -133,27 +146,80 @@ document.querySelectorAll('.mobile-studio-tab').forEach(tab => {
     if (studioMode === 'image') elements.imageWorkspace?.classList.remove('hidden');
     if (studioMode === 'aidub') elements.aiDubWorkspace?.classList.remove('hidden');
 
+    updateDownloadButtonText();
     updateGlobalSettingsBadge();
   });
 });
 
-// Clip Range Sliders
+function updateDownloadButtonText() {
+  if (!elements.downloadBtnText) return;
+  if (studioMode === 'full') {
+    elements.downloadBtnText.textContent = 'بدء التحميل المباشر';
+  } else if (studioMode === 'clip') {
+    elements.downloadBtnText.textContent = 'تصدير المقطع';
+  } else if (studioMode === 'image') {
+    elements.downloadBtnText.textContent = imageMode === 'frame' ? 'استخراج اللقطة' : 'تحميل الصورة المصغرة';
+  } else if (studioMode === 'aidub') {
+    if (aiDubSubmode === 'sub_only') elements.downloadBtnText.textContent = 'تحميل مع ترجمة';
+    else if (aiDubSubmode === 'dub_and_sub') elements.downloadBtnText.textContent = 'بدء الدبلجة والترجمة';
+    else elements.downloadBtnText.textContent = 'بدء الدبلجة الذكية';
+  }
+}
+
+// Clip Range Sliders & Presets
 function updateClipRangeDisplay() {
-  if (!currentVideoInfo || !elements.clipRangeLabel) return;
-  const startSec = Number(elements.clipStartRange?.value || 0);
-  const endSec = Number(elements.clipEndRange?.value || 30);
-  elements.clipRangeLabel.textContent = `${formatDuration(startSec)} → ${formatDuration(endSec)}`;
+  if (!elements.clipStartRange || !elements.clipEndRange) return;
+  const startSec = Number(elements.clipStartRange.value || 0);
+  const endSec = Number(elements.clipEndRange.value || 30);
+  const durSec = Math.max(1, endSec - startSec);
+
+  if (elements.clipStartValue) elements.clipStartValue.textContent = formatDuration(startSec);
+  if (elements.clipEndValue) elements.clipEndValue.textContent = formatDuration(endSec);
+  if (elements.clipDurationLabel) elements.clipDurationLabel.textContent = formatDuration(durSec);
+  if (elements.clipRangeLabel) elements.clipRangeLabel.textContent = `${formatDuration(startSec)} → ${formatDuration(endSec)}`;
 }
 
 elements.clipStartRange?.addEventListener('input', updateClipRangeDisplay);
 elements.clipEndRange?.addEventListener('input', updateClipRangeDisplay);
 
-// Image Mode Handlers
+elements.presetFirst30?.addEventListener('click', () => {
+  if (!currentVideoInfo) return;
+  elements.clipStartRange.value = 0;
+  elements.clipEndRange.value = Math.min(30, currentVideoInfo.duration || 30);
+  updateClipRangeDisplay();
+});
+
+elements.presetFullMin?.addEventListener('click', () => {
+  if (!currentVideoInfo) return;
+  elements.clipStartRange.value = 0;
+  elements.clipEndRange.value = Math.min(60, currentVideoInfo.duration || 60);
+  updateClipRangeDisplay();
+});
+
+elements.presetMiddle?.addEventListener('click', () => {
+  if (!currentVideoInfo) return;
+  const total = currentVideoInfo.duration || 120;
+  const mid = Math.floor(total / 2);
+  elements.clipStartRange.value = Math.max(0, mid - 15);
+  elements.clipEndRange.value = Math.min(total, mid + 15);
+  updateClipRangeDisplay();
+});
+
+elements.presetLast30?.addEventListener('click', () => {
+  if (!currentVideoInfo) return;
+  const total = currentVideoInfo.duration || 120;
+  elements.clipStartRange.value = Math.max(0, total - 30);
+  elements.clipEndRange.value = total;
+  updateClipRangeDisplay();
+});
+
+// Image Mode & Format Selection
 elements.imgModeThumb?.addEventListener('click', () => {
   imageMode = 'thumbnail';
   elements.imgModeThumb.classList.add('active');
   elements.imgModeFrame?.classList.remove('active');
   elements.frameSeekWrap?.classList.add('hidden');
+  updateDownloadButtonText();
 });
 
 elements.imgModeFrame?.addEventListener('click', () => {
@@ -161,12 +227,55 @@ elements.imgModeFrame?.addEventListener('click', () => {
   elements.imgModeFrame.classList.add('active');
   elements.imgModeThumb?.classList.remove('active');
   elements.frameSeekWrap?.classList.remove('hidden');
+  updateDownloadButtonText();
+});
+
+document.querySelectorAll('.img-fmt-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.img-fmt-btn').forEach(b => {
+      b.classList.remove('active');
+      b.style.background = 'transparent';
+      b.style.color = 'var(--text-main)';
+      b.style.fontWeight = 'normal';
+    });
+    btn.classList.add('active');
+    btn.style.background = 'var(--primary)';
+    btn.style.color = '#000';
+    btn.style.fontWeight = 'bold';
+    imageFormat = btn.dataset.fmt || 'jpg';
+  });
 });
 
 elements.frameSeekRange?.addEventListener('input', (e) => {
   if (elements.frameSeekLabel) {
     elements.frameSeekLabel.textContent = formatDuration(Number(e.target.value));
   }
+});
+
+// AI Dubbing Sub-modes Handler
+document.querySelectorAll('.aidub-submode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.aidub-submode-btn').forEach(b => {
+      b.classList.remove('active');
+      b.style.border = '1px solid rgba(255,255,255,0.1)';
+      b.style.background = 'var(--bg-card)';
+    });
+    btn.classList.add('active');
+    btn.style.border = '1px solid var(--primary)';
+    btn.style.background = 'rgba(0,242,254,0.1)';
+    aiDubSubmode = btn.dataset.submode || 'dub_only';
+
+    if (elements.aiDubInfoText) {
+      if (aiDubSubmode === 'sub_only') {
+        elements.aiDubInfoText.textContent = 'الترجمة النصية تُدمج مع الفيديو مع الإبقاء على الصوت الأصلي';
+      } else if (aiDubSubmode === 'dub_and_sub') {
+        elements.aiDubInfoText.textContent = 'دبلجة صوتية بالذكاء الاصطناعي + ترجمة نصية مطبوعة (حفظ الموسيقى)';
+      } else {
+        elements.aiDubInfoText.textContent = 'الدبلجة الذكية: تُترجم الترجمة التلقائية ثم يُولَّد صوت جديد — يُزال الصوت الأصلي بالكامل';
+      }
+    }
+    updateDownloadButtonText();
+  });
 });
 
 // Auto Clipboard Detection
