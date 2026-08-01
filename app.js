@@ -45,6 +45,10 @@ const elements = {
   durationBadge: document.getElementById('durationBadge'),
   videoTitle: document.getElementById('videoTitle'),
   uploaderName: document.getElementById('uploaderName'),
+  videoPreviewCard: document.getElementById('videoPreviewCard'),
+  globalSettingsBadge: document.getElementById('globalSettingsBadge'),
+  videoEmbedContainer: document.getElementById('videoEmbedContainer'),
+  refreshPreviewBtn: document.getElementById('refreshPreviewBtn'),
   unifiedQualityGrid: document.getElementById('unifiedQualityGrid'),
   filenameInput: document.getElementById('filenameInput'),
   downloadBtn: document.getElementById('downloadBtn'),
@@ -216,17 +220,57 @@ elements.videoUrl?.addEventListener('keydown', (e) => {
 });
 
 function displayVideoInfo(info) {
-  elements.videoTitle.textContent = info.title || 'فيديو بدون عنوان';
-  elements.uploaderName.textContent = info.uploader || 'VIPD Engine';
-  elements.durationBadge.textContent = info.duration ? formatDuration(info.duration) : '00:00';
-  elements.thumbnailImg.src = info.thumbnail || 'assets/vm-icon.png';
-  elements.filenameInput.value = (info.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
+  if (elements.videoTitle) elements.videoTitle.textContent = info.title || 'فيديو بدون عنوان';
+  if (elements.uploaderName) elements.uploaderName.textContent = info.uploader || 'VIPD Engine';
+  if (elements.durationBadge) elements.durationBadge.textContent = info.duration ? formatDuration(info.duration) : '00:00';
+  if (elements.thumbnailImg) elements.thumbnailImg.src = info.thumbnail || 'assets/icon.png';
+  if (elements.filenameInput) elements.filenameInput.value = (info.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
 
-  elements.videoCard.classList.add('show');
-  elements.studioPanel.classList.add('show');
-  elements.downloadOptions.classList.add('show');
+  elements.videoCard?.classList.add('show');
+  elements.studioPanel?.classList.add('show');
+  elements.downloadOptions?.classList.add('show');
+  elements.videoPreviewCard?.classList.remove('hidden');
+
+  updateGlobalSettingsBadge();
+  setupVideoPreviewPlayer(info);
   renderQualityGrid(info.availableHeights || [1080, 720, 480]);
 }
+
+function updateGlobalSettingsBadge() {
+  if (!elements.globalSettingsBadge) return;
+  const typeLabel = downloadType === 'audio' ? 'صوت فقط MP3' : (downloadType === 'video-only' ? 'فيديو فقط' : 'فيديو وصوت');
+  const hLabel = selectedHeight === 'best' ? 'best' : `${selectedHeight}p`;
+  elements.globalSettingsBadge.textContent = `إعدادات عامة [الجودة: ${hLabel} | ${typeLabel}]`;
+}
+
+function setupVideoPreviewPlayer(info) {
+  if (!elements.videoEmbedContainer) return;
+  let videoId = '';
+  if (info.url) {
+    const ytMatch = info.url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+    if (ytMatch) videoId = ytMatch[1];
+  }
+
+  if (videoId) {
+    elements.videoEmbedContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?rel=0" style="width:100%; height:220px; border:none; border-radius:10px;" allowfullscreen></iframe>`;
+  } else if (info.thumbnail) {
+    elements.videoEmbedContainer.innerHTML = `
+      <div style="position:relative; width:100%; height:220px; background:#000; border-radius:10px; overflow:hidden;">
+        <img src="${info.thumbnail}" style="width:100%; height:100%; object-fit:cover; opacity:0.8;">
+        <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.3);">
+          <i class="fas fa-play-circle" style="font-size:54px; color:#00f2fe;"></i>
+        </div>
+      </div>
+    `;
+  }
+}
+
+elements.refreshPreviewBtn?.addEventListener('click', () => {
+  if (currentVideoInfo) {
+    setupVideoPreviewPlayer(currentVideoInfo);
+    updateGlobalSettingsBadge();
+  }
+});
 
 function formatDuration(seconds) {
   if (!seconds) return '00:00';
@@ -250,6 +294,7 @@ function renderQualityGrid(heights) {
       elements.unifiedQualityGrid.querySelectorAll('.quality-card').forEach(c => c.classList.remove('active'));
       btn.classList.add('active');
       selectedHeight = btn.dataset.height;
+      updateGlobalSettingsBadge();
     });
   });
 }

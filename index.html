@@ -91,13 +91,31 @@
 
       <!-- Video Info Card -->
       <div class="mobile-video-card" id="videoCard">
-        <div class="card-thumb-wrap">
-          <img id="thumbnailImg" src="" alt="معاينة">
-          <span class="thumb-duration" id="durationBadge">00:00</span>
+        <div class="thumbnail-wrapper">
+          <img src="" id="thumbnailImg" alt="غلاف الفيديو">
+          <span class="duration-badge" id="durationBadge">00:00</span>
         </div>
-        <div class="card-details">
-          <h3 id="videoTitle"></h3>
-          <p class="card-uploader" id="videoUploader"><i class="fas fa-user"></i> <span id="uploaderName"></span></p>
+        <div class="video-details">
+          <h3 id="videoTitle">عنوان الفيديو</h3>
+          <p id="uploaderName">اسم القناة</p>
+        </div>
+      </div>
+
+      <!-- Video Preview Player Card (مشاهدة الفيديو قبل التحميل) -->
+      <div class="mobile-video-preview-card hidden" id="videoPreviewCard" style="margin-top:12px; background:var(--bg-card); border-radius:14px; padding:14px; border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
+          <h4 style="margin:0; font-size:14px; color:var(--text-main);"><i class="fas fa-eye" style="color:var(--primary);"></i> <span>مشاهدة الفيديو قبل التحميل</span></h4>
+          <span id="globalSettingsBadge" style="font-size:11px; background:rgba(0,242,254,0.15); color:var(--primary); padding:4px 8px; border-radius:6px; font-weight:bold;">إعدادات عامة [الجودة: best | فيديو وصوت]</span>
+        </div>
+        
+        <div id="videoEmbedContainer" style="width:100%; min-height:200px; background:#000; border-radius:10px; overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center;">
+          <p style="color:#64748b; font-size:12px;">جاري تحميل المعاينة المباشرة...</p>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button type="button" class="btn-mobile-secondary" id="refreshPreviewBtn" style="flex:1; padding:8px 12px; font-size:13px;">
+            <i class="fas fa-sync-alt"></i> <span>تحديث المعاينة</span>
+          </button>
         </div>
       </div>
 
