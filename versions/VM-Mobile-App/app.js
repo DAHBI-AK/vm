@@ -69,6 +69,8 @@ const elements = {
   defaultQualitySelect: document.getElementById('defaultQualitySelect'),
   customDownloadPath: document.getElementById('customDownloadPath'),
   browseDownloadPathBtn: document.getElementById('browseDownloadPathBtn'),
+  choosePathBtn: document.getElementById('choosePathBtn'),
+  openLastVideoFolderBtn: document.getElementById('openLastVideoFolderBtn'),
   turboMode: document.getElementById('turboMode'),
   audioEnhanceToggle: document.getElementById('audioEnhanceToggle'),
   autoClipboardToggle: document.getElementById('autoClipboardToggle'),
@@ -284,6 +286,7 @@ elements.downloadBtn?.addEventListener('click', async () => {
     if (!res.ok || !data.success) throw new Error(data.error || 'تعذر التحميل');
 
     let lastDownloadedPath = data.path || data.filename;
+    localStorage.setItem('vm_mobile_last_path', lastDownloadedPath);
     elements.progressPercent.textContent = '100%';
     elements.progressFill.style.width = '100%';
     elements.progressContainer.classList.remove('show');
@@ -493,6 +496,31 @@ elements.browseDownloadPathBtn?.addEventListener('click', () => {
     elements.customDownloadPath.value = newPath.trim();
     localStorage.setItem('vm_mobile_save_path', newPath.trim());
     alert(`تم تحديد مجلد التحميل الافتراضي: ${newPath.trim()}`);
+  }
+});
+
+elements.choosePathBtn?.addEventListener('click', () => {
+  const current = elements.customDownloadPath?.value || 'B:\\';
+  const newPath = prompt('اختيار مسار حفظ التنزيلات الجديد:', current);
+  if (newPath && newPath.trim()) {
+    elements.customDownloadPath.value = newPath.trim();
+    localStorage.setItem('vm_mobile_save_path', newPath.trim());
+    alert(`تم مسار الحفظ الجديد: ${newPath.trim()}`);
+  }
+});
+
+elements.openLastVideoFolderBtn?.addEventListener('click', async () => {
+  const lastPath = localStorage.getItem('vm_mobile_last_path') || elements.customDownloadPath?.value || 'B:\\';
+  try {
+    const res = await fetch('/api/open-folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folderPath: lastPath })
+    });
+    const data = await res.json();
+    alert(`تم فتح مجلد آخر فيديو: ${lastPath}`);
+  } catch (e) {
+    alert(`مجلد آخر فيديو تم تحميله: ${lastPath}`);
   }
 });
 
