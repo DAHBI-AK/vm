@@ -79,6 +79,13 @@ const elements = {
   repairSystemBtn: document.getElementById('repairSystemBtn'),
   ytDlpHealth: document.getElementById('ytDlpHealth'),
   ffmpegHealth: document.getElementById('ffmpegHealth'),
+
+  // Settings Batch Queue Elements
+  settingsBatchUrlsText: document.getElementById('settingsBatchUrlsText'),
+  settingsPasteAddBatchBtn: document.getElementById('settingsPasteAddBatchBtn'),
+  settingsStartBatchBtn: document.getElementById('settingsStartBatchBtn'),
+  settingsClearBatchBtn: document.getElementById('settingsClearBatchBtn'),
+  settingsBatchQueueList: document.getElementById('settingsBatchQueueList'),
   
   // Batch Queue Elements
   batchToggleBtn: document.getElementById('batchToggleBtn'),
@@ -509,19 +516,108 @@ elements.choosePathBtn?.addEventListener('click', () => {
   }
 });
 
-elements.openLastVideoFolderBtn?.addEventListener('click', async () => {
-  const lastPath = localStorage.getItem('vm_mobile_last_path') || elements.customDownloadPath?.value || 'B:\\';
+// Settings Batch Queue Logic
+let settingsBatchQueue = [];
+
+elements.settingsPasteAddBatchBtn?.addEventListener('click', async () => {
   try {
-    const res = await fetch('/api/open-folder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ folderPath: lastPath })
-    });
-    const data = await res.json();
-    alert(`تم فتح مجلد آخر فيديو: ${lastPath}`);
-  } catch (e) {
-    alert(`مجلد آخر فيديو تم تحميله: ${lastPath}`);
+    let text = '';
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      text = await navigator.clipboard.readText();
+    }
+    if (!text || !text.trim()) {
+      text = prompt('ألصق الروابط المتتالية هنا (رابط في كل سطر):');
+    }
+    if (text && text.trim()) {
+      const existing = elements.settingsBatchUrlsText.value ? elements.settingsBatchUrlsText.value + '\n' : '';
+      elements.settingsBatchUrlsText.value = existing + text.trim();
+      updateSettingsBatchQueue();
+    }
+  } catch (err) {
+    const text = prompt('ألصق الروابط المتتالية هنا (رابط في كل سطر):');
+    if (text && text.trim()) {
+      const existing = elements.settingsBatchUrlsText.value ? elements.settingsBatchUrlsText.value + '\n' : '';
+      elements.settingsBatchUrlsText.value = existing + text.trim();
+      updateSettingsBatchQueue();
+    }
   }
+});
+
+elements.settingsBatchUrlsText?.addEventListener('input', updateSettingsBatchQueue);
+
+function updateSettingsBatchQueue() {
+  if (!elements.settingsBatchUrlsText) return;
+  const lines = elements.settingsBatchUrlsText.value.split('\n').map(l => l.trim()).filter(l => /^https?:\/\//i.test(l));
+  settingsBatchQueue = [...new Set(lines)];
+  renderSettingsBatchQueueList();
+  if (elements.settingsStartBatchBtn) {
+    elements.settingsStartBatchBtn.disabled = settingsBatchQueue.length === 0;
+  }
+}
+
+function renderSettingsBatchQueueList() {
+  if (!elements.settingsBatchQueueList) return;
+  if (settingsBatchQueue.length === 0) {
+    elements.settingsBatchQueueList.innerHTML = `<p style="font-size:12px; color:var(--text-secondary); text-align:center; padding:6px;">لا توجد روابط في القائمة</p>`;
+    return;
+  }
+  elements.settingsBatchQueueList.innerHTML = settingsBatchQueue.map((url, idx) => `
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--bg-input); border-radius:8px; margin-bottom:6px; font-size:12px;">
+      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">${idx + 1}. ${url}</span>
+      <button type="button" onclick="removeSettingsBatchItem(${idx})" style="background:none; border:none; color:#ef4444; font-size:14px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+    </div>
+  `).join('');
+}
+
+window.removeSettingsBatchItem = function(index) {
+  settingsBatchQueue.splice(index, 1);
+  if (elements.settingsBatchUrlsText) elements.settingsBatchUrlsText.value = settingsBatchQueue.join('\n');
+  updateSettingsBatchQueue();
+};
+
+elements.settingsClearBatchBtn?.addEventListener('click', () => {
+  settingsBatchQueue = [];
+  if (elements.settingsBatchUrlsText) elements.settingsBatchUrlsText.value = '';
+  updateSettingsBatchQueue();
+});
+
+elements.settingsStartBatchBtn?.addEventListener('click', async () => {
+  if (settingsBatchQueue.length === 0) return;
+
+  elements.settingsStartBatchBtn.disabled = true;
+  elements.settingsStartBatchBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> جاري تحميل السلسلة تلقائياً...`;
+
+  const total = settingsBatchQueue.length;
+  let completed = 0;
+  const targetDir = elements.customDownloadPath?.value || 'B:\\';
+  const defaultQual = elements.defaultQualitySelect?.value || 'best';
+
+  for (let i = 0; i < total; i++) {
+    const url = settingsBatchQueue[i];
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url,
+          type: defaultQual === 'audio' ? 'audio' : 'video-audio',
+          height: defaultQual === 'audio' ? 'best' : defaultQual,
+          outputDir: targetDir
+        })
+      });
+      const data = await res.json();
+      if (data.success) completed++;
+    } catch (err) {
+      console.warn(`Settings batch error for ${url}:`, err);
+    }
+  }
+
+  elements.settingsStartBatchBtn.disabled = false;
+  elements.settingsStartBatchBtn.innerHTML = `<i class="fas fa-play"></i> <span>بدء تحميل السلسلة تلقائياً</span>`;
+  alert(`اكتمل تحميل السلسلة بنجاح تلقائياً (${completed}/${total}) في مجلد: ${targetDir}`);
+  settingsBatchQueue = [];
+  if (elements.settingsBatchUrlsText) elements.settingsBatchUrlsText.value = '';
+  updateSettingsBatchQueue();
 });
 
 elements.defaultQualitySelect?.addEventListener('change', (e) => {
