@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VM Mobile — وضع عدم الاتصال</title>
+  <style>
+    body {
+      background: #0b0f19;
+      color: #f8fafc;
+      font-family: system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      text-align: center;
+    }
+    .icon { font-size: 64px; color: #00f2fe; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin-bottom: 10px; }
+    p { color: #94a3b8; font-size: 14px; max-width: 320px; }
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, #00f2fe, #4facfe);
+      border: none;
+      border-radius: 10px;
+      color: #0b0f19;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="icon">⚡</div>
+  <h1>أنت غير متصل بالإنترنت</h1>
+  <p>يرجى التحقق من اتصالك بالشبكة وإعادة المحاولة لاستخدام كافة ميزات التحميل.</p>
+  <button onclick="window.location.reload()">إعادة المحاولة</button>
+</body>
+</html>
