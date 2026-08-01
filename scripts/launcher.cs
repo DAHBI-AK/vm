@@ -18,24 +18,18 @@ namespace VM {
 
         string electron = Path.Combine(dir, "node_modules", "electron", "dist", "electron.exe");
         string bat = Path.Combine(dir, "VM.bat");
-        string nodeDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "nodejs", "node.exe");
 
-        if (!File.Exists(bat)) {
-          ShowError("VM.bat not found in:\n" + dir);
+        if (File.Exists(electron)) {
+          StartElectron(electron, dir);
           return;
         }
 
-        if (!File.Exists(nodeDir) || !File.Exists(electron)) {
+        if (File.Exists(bat)) {
           RunBatch(bat, dir, false);
           return;
         }
 
-        if (!File.Exists(Path.Combine(dir, "bin", "yt-dlp.exe"))) {
-          RunBatch(bat, dir, true);
-          return;
-        }
-
-        StartElectron(electron, dir);
+        ShowError("Electron binary not found in:\n" + electron);
       } catch (Exception ex) {
         ShowError(ex.Message);
       }
@@ -62,7 +56,7 @@ namespace VM {
     private static void RunBatch(string batPath, string workingDir, bool hidden) {
       Process.Start(new ProcessStartInfo {
         FileName = "cmd.exe",
-        Arguments = "/c \"\"\"" + batPath + "\"\"\"",
+        Arguments = "/c \"" + batPath + "\"",
         WorkingDirectory = workingDir,
         UseShellExecute = true,
         WindowStyle = hidden ? ProcessWindowStyle.Hidden : ProcessWindowStyle.Normal
