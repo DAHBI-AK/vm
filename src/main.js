@@ -13,6 +13,24 @@ const APP_ID = 'com.vm.downloader';
 const ASSETS_DIR = path.join(__dirname, '../assets');
 
 const userDataPath = path.join(__dirname, '../data');
+
+// Safely clean stale locks from prior runs
+try {
+  if (fs.existsSync(userDataPath)) {
+    const lockFiles = [
+      path.join(userDataPath, 'lockfile'),
+      path.join(userDataPath, 'SingletonLock'),
+      path.join(userDataPath, 'Local Storage', 'leveldb', 'LOCK'),
+      path.join(userDataPath, 'Session Storage', 'LOCK')
+    ];
+    lockFiles.forEach(f => {
+      if (fs.existsSync(f)) {
+        try { fs.unlinkSync(f); } catch {}
+      }
+    });
+  }
+} catch {}
+
 app.setPath('userData', userDataPath);
 app.setName(APP_NAME);
 
