@@ -6,7 +6,14 @@ const { spawn } = require('child_process');
 const PORT = process.env.PORT || 3000;
 const downloadsDir = path.join(__dirname, 'downloads');
 const ytDlpPath = path.join(__dirname, 'bin', 'yt-dlp.exe');
-const ffmpegStatic = require('ffmpeg-static');
+
+let ffmpegStatic = null;
+try {
+  ffmpegStatic = require('ffmpeg-static');
+} catch (e) {
+  const localFfmpeg = path.join(__dirname, 'bin', 'ffmpeg.exe');
+  if (fs.existsSync(localFfmpeg)) ffmpegStatic = localFfmpeg;
+}
 
 if (!fs.existsSync(downloadsDir)) {
   fs.mkdirSync(downloadsDir, { recursive: true });
@@ -115,7 +122,7 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { url, height = 'best', type = 'video-audio', filename, clipStart, clipEnd, studioMode = 'full', imageMode = 'thumbnail', audioEnhance = false, format = 'mp4' } = JSON.parse(body || '{}');
+        const { url, height = 'best', type = 'video-audio', filename, clipStart, clipEnd, studioMode = 'full', imageMode = 'thumbnail', format = 'mp4' } = JSON.parse(body || '{}');
         if (!url) {
           res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
           return res.end(JSON.stringify({ error: 'الرابط مطلوب' }));
@@ -170,7 +177,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     return res.end(JSON.stringify({
       ytDlp: fs.existsSync(ytDlpPath),
-      ffmpeg: !!ffmpegStatic && fs.existsSync(ffmpegStatic),
+      ffmpeg: !!ffmpegStatic,
       status: 'ready'
     }));
   }
