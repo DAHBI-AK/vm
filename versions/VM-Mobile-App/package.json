@@ -1,0 +1,9 @@
+{
+  "name": "vm-mobile-app",
+  "version": "2.0.0",
+  "description": "VM Downloader Mobile App Version",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}
