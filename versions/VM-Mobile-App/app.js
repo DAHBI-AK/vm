@@ -1,10 +1,22 @@
-// VM Mobile App Engine
-let currentVideoInfo = null;
-let selectedHeight = 'best';
-let downloadType = 'video-audio';
-let downloadHistory = JSON.parse(localStorage.getItem('vm_mobile_history') || '[]');
-let studioMode = 'full';
-let imageMode = 'thumbnail';
+let deferredPrompt = null;
+const installAppBtn = document.getElementById('installAppBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installAppBtn) installAppBtn.classList.remove('hidden');
+});
+
+installAppBtn?.addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      installAppBtn.classList.add('hidden');
+    }
+    deferredPrompt = null;
+  }
+});
 
 // Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
