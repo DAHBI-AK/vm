@@ -1,3 +1,15 @@
+// Full-Screen Splash Screen Auto Dismiss
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    const splash = document.getElementById('splashScreen');
+    if (splash) {
+      splash.style.opacity = '0';
+      splash.style.visibility = 'hidden';
+      setTimeout(() => splash.remove(), 600);
+    }
+  }, 1200);
+});
+
 let deferredPrompt = null;
 const installAppBtn = document.getElementById('installAppBtn');
 
