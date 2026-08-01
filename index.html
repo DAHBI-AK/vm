@@ -14,9 +14,12 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js', { scope: './' })
-          .then(reg => console.log('SW Registered:', reg.scope))
-          .catch(err => console.log('SW Error:', err));
+        try {
+          const swUrl = new URL('sw.js', window.location.href).href;
+          navigator.serviceWorker.register(swUrl)
+            .then(reg => console.log('PWA Service Worker Registered:', reg.scope))
+            .catch(err => console.warn('SW Registration Notice:', err));
+        } catch (e) {}
       });
     }
   </script>
