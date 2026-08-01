@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const PORT = process.env.PORT || 3000;
 const downloadsDir = path.join(__dirname, 'downloads');
 const ytDlpPath = path.join(__dirname, 'bin', 'yt-dlp.exe');
+const ffmpegStatic = require('ffmpeg-static');
 
 if (!fs.existsSync(downloadsDir)) {
   fs.mkdirSync(downloadsDir, { recursive: true });
@@ -27,6 +28,9 @@ function getYtDlpBaseArgs(url = '') {
   const args = ['--no-update', '--no-warnings', '--no-check-certificates', '--geo-bypass'];
   if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
     args.push('--extractor-args', 'youtube:player_client=android,web');
+  }
+  if (ffmpegStatic) {
+    args.push('--ffmpeg-location', ffmpegStatic);
   }
   return args;
 }
@@ -59,7 +63,6 @@ function parseFormats(formats = []) {
 }
 
 const server = http.createServer((req, res) => {
-  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -112,7 +115,7 @@ const server = http.createServer((req, res) => {
     req.on('data', chunk => body += chunk);
     req.on('end', async () => {
       try {
-        const { url, height = 'best', type = 'video-audio', filename, format = 'mp4' } = JSON.parse(body || '{}');
+        const { url, height = 'best', type = 'video-audio', filename, clipStart, clipEnd, studioMode = 'full', imageMode = 'thumbnail', audioEnhance = false, format = 'mp4' } = JSON.parse(body || '{}');
         if (!url) {
           res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
           return res.end(JSON.stringify({ error: 'الرابط مطلوب' }));
@@ -120,7 +123,10 @@ const server = http.createServer((req, res) => {
 
         const timestamp = Date.now();
         const safeName = (filename || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
-        const outFilename = `${safeName}_${timestamp}.${type === 'audio' ? 'mp3' : format}`;
+        let extName = type === 'audio' ? 'mp3' : format;
+        if (studioMode === 'image') extName = 'jpg';
+
+        const outFilename = `${safeName}_${timestamp}.${extName}`;
         const outPath = path.join(downloadsDir, outFilename);
 
         let formatSelector = 'bestvideo+bestaudio/best';
@@ -130,15 +136,17 @@ const server = http.createServer((req, res) => {
           formatSelector = `bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`;
         }
 
-        const args = [
-          ...getYtDlpBaseArgs(url),
-          '-f', formatSelector,
-          '-o', outPath,
-          url
-        ];
+        const args = [...getYtDlpBaseArgs(url)];
 
-        if (type === 'audio') {
-          args.push('-x', '--audio-format', 'mp3');
+        if (studioMode === 'image' && imageMode === 'thumbnail') {
+          args.push('--write-thumbnail', '--skip-download', '--convert-thumbnails', 'jpg', '-o', outPath.replace(/\.jpg$/, ''));
+        } else if (studioMode === 'clip' && clipStart !== undefined && clipEnd !== undefined) {
+          args.push('-f', formatSelector, '--download-sections', `*${clipStart}-${clipEnd}`, '-o', outPath);
+        } else {
+          args.push('-f', formatSelector, '-o', outPath);
+          if (type === 'audio') {
+            args.push('-x', '--audio-format', 'mp3');
+          }
         }
 
         await runYtDlp(args);
@@ -156,6 +164,15 @@ const server = http.createServer((req, res) => {
       }
     });
     return;
+  }
+
+  if (req.method === 'GET' && reqUrl === '/api/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    return res.end(JSON.stringify({
+      ytDlp: fs.existsSync(ytDlpPath),
+      ffmpeg: !!ffmpegStatic && fs.existsSync(ffmpegStatic),
+      status: 'ready'
+    }));
   }
 
   // Static File Serving
@@ -184,11 +201,4 @@ server.listen(PORT, () => {
   console.log(` VIPD.SHOP Web Downloader is Running!`);
   console.log(` Access at: ${url}`);
   console.log(`==========================================\n`);
-  
-  try {
-    const { exec } = require('child_process');
-    exec(`start ${url}`);
-  } catch (err) {
-    // ignore
-  }
 });
