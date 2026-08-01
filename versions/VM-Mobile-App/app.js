@@ -49,6 +49,22 @@ const elements = {
   globalSettingsBadge: document.getElementById('globalSettingsBadge'),
   videoEmbedContainer: document.getElementById('videoEmbedContainer'),
   refreshPreviewBtn: document.getElementById('refreshPreviewBtn'),
+  studioPanel: document.getElementById('studioPanel'),
+  studioModeTabs: document.getElementById('studioModeTabs'),
+  clipWorkspace: document.getElementById('clipWorkspace'),
+  clipRangeLabel: document.getElementById('clipRangeLabel'),
+  clipStartRange: document.getElementById('clipStartRange'),
+  clipEndRange: document.getElementById('clipEndRange'),
+  imageWorkspace: document.getElementById('imageWorkspace'),
+  imgModeThumb: document.getElementById('imgModeThumb'),
+  imgModeFrame: document.getElementById('imgModeFrame'),
+  frameSeekWrap: document.getElementById('frameSeekWrap'),
+  frameSeekRange: document.getElementById('frameSeekRange'),
+  frameSeekLabel: document.getElementById('frameSeekLabel'),
+  aiDubWorkspace: document.getElementById('aiDubWorkspace'),
+  dubTargetLangSelect: document.getElementById('dubTargetLangSelect'),
+  dubVoiceProfileSelect: document.getElementById('dubVoiceProfileSelect'),
+  dubModeSelect: document.getElementById('dubModeSelect'),
   unifiedQualityGrid: document.getElementById('unifiedQualityGrid'),
   filenameInput: document.getElementById('filenameInput'),
   downloadBtn: document.getElementById('downloadBtn'),
@@ -102,24 +118,55 @@ const elements = {
   batchQueueList: document.getElementById('batchQueueList')
 };
 
-// Bottom Navigation Tabs
-document.querySelectorAll('.nav-button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.nav-button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
-    
-    btn.classList.add('active');
-    const tabId = `${btn.dataset.tab}Tab`;
-    const view = document.getElementById(tabId);
-    if (view) view.classList.add('active');
+// Studio Mode Tabs Handler (4 Tabs: Full, Clip, Image, AI Dub)
+document.querySelectorAll('.mobile-studio-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mobile-studio-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    studioMode = tab.dataset.mode || 'full';
 
-    if (btn.dataset.tab === 'history') updateHistoryUI();
-    if (btn.dataset.tab === 'platforms') populatePlatforms();
-    if (btn.dataset.tab === 'settings') fetchSystemHealth();
-    if (btn.dataset.tab === 'downloader' && elements.autoClipboardToggle?.checked) {
-      checkClipboardAuto();
-    }
+    elements.clipWorkspace?.classList.add('hidden');
+    elements.imageWorkspace?.classList.add('hidden');
+    elements.aiDubWorkspace?.classList.add('hidden');
+
+    if (studioMode === 'clip') elements.clipWorkspace?.classList.remove('hidden');
+    if (studioMode === 'image') elements.imageWorkspace?.classList.remove('hidden');
+    if (studioMode === 'aidub') elements.aiDubWorkspace?.classList.remove('hidden');
+
+    updateGlobalSettingsBadge();
   });
+});
+
+// Clip Range Sliders
+function updateClipRangeDisplay() {
+  if (!currentVideoInfo || !elements.clipRangeLabel) return;
+  const startSec = Number(elements.clipStartRange?.value || 0);
+  const endSec = Number(elements.clipEndRange?.value || 30);
+  elements.clipRangeLabel.textContent = `${formatDuration(startSec)} → ${formatDuration(endSec)}`;
+}
+
+elements.clipStartRange?.addEventListener('input', updateClipRangeDisplay);
+elements.clipEndRange?.addEventListener('input', updateClipRangeDisplay);
+
+// Image Mode Handlers
+elements.imgModeThumb?.addEventListener('click', () => {
+  imageMode = 'thumbnail';
+  elements.imgModeThumb.classList.add('active');
+  elements.imgModeFrame?.classList.remove('active');
+  elements.frameSeekWrap?.classList.add('hidden');
+});
+
+elements.imgModeFrame?.addEventListener('click', () => {
+  imageMode = 'frame';
+  elements.imgModeFrame.classList.add('active');
+  elements.imgModeThumb?.classList.remove('active');
+  elements.frameSeekWrap?.classList.remove('hidden');
+});
+
+elements.frameSeekRange?.addEventListener('input', (e) => {
+  if (elements.frameSeekLabel) {
+    elements.frameSeekLabel.textContent = formatDuration(Number(e.target.value));
+  }
 });
 
 // Auto Clipboard Detection
@@ -320,16 +367,34 @@ elements.downloadBtn?.addEventListener('click', async () => {
   }, 300);
 
   try {
+    const payload = {
+      url: currentVideoInfo.url,
+      height: selectedHeight,
+      type: downloadType,
+      filename: elements.filenameInput.value,
+      outputDir: elements.customDownloadPath?.value || 'B:\\',
+      studioMode: studioMode
+    };
+
+    if (studioMode === 'clip') {
+      payload.clipStart = Number(elements.clipStartRange?.value || 0);
+      payload.clipEnd = Number(elements.clipEndRange?.value || 30);
+    } else if (studioMode === 'image') {
+      payload.imageMode = imageMode;
+      if (imageMode === 'frame') {
+        payload.frameSeekTime = Number(elements.frameSeekRange?.value || 5);
+      }
+    } else if (studioMode === 'aidub') {
+      payload.aiDub = true;
+      payload.dubLanguage = elements.dubTargetLangSelect?.value || 'ar';
+      payload.dubVoice = elements.dubVoiceProfileSelect?.value || 'auto';
+      payload.dubMode = elements.dubModeSelect?.value || 'dub_only';
+    }
+
     const res = await fetch('/api/download', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: currentVideoInfo.url,
-        height: selectedHeight,
-        type: downloadType,
-        filename: elements.filenameInput.value,
-        outputDir: elements.customDownloadPath?.value || 'B:\\'
-      })
+      body: JSON.stringify(payload)
     });
 
     const data = await res.json();
