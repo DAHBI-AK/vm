@@ -4,7 +4,7 @@
   "description": "VM — تطبيق تحميل الفيديوهات والأغاني بجودة عالية",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "node_modules\\electron\\dist\\electron.exe .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "setup": "node scripts/setup.js",
