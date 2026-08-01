@@ -67,6 +67,8 @@ const elements = {
   // Settings & System Health Elements
   languageSelect: document.getElementById('languageSelect'),
   defaultQualitySelect: document.getElementById('defaultQualitySelect'),
+  customDownloadPath: document.getElementById('customDownloadPath'),
+  browseDownloadPathBtn: document.getElementById('browseDownloadPathBtn'),
   turboMode: document.getElementById('turboMode'),
   audioEnhanceToggle: document.getElementById('audioEnhanceToggle'),
   autoClipboardToggle: document.getElementById('autoClipboardToggle'),
@@ -271,7 +273,8 @@ elements.downloadBtn?.addEventListener('click', async () => {
         url: currentVideoInfo.url,
         height: selectedHeight,
         type: downloadType,
-        filename: elements.filenameInput.value
+        filename: elements.filenameInput.value,
+        outputDir: elements.customDownloadPath?.value || 'B:\\'
       })
     });
 
@@ -475,10 +478,22 @@ async function fetchSystemHealth() {
   }
 }
 
-// Settings Event Handlers
-elements.languageSelect?.addEventListener('change', (e) => {
-  localStorage.setItem('vm_mobile_lang', e.target.value);
-  alert('تم حفظ لغة التطبيق بنجاح');
+// Default Download Folder & Browse Action
+const savedPath = localStorage.getItem('vm_mobile_save_path') || 'B:\\';
+if (elements.customDownloadPath) elements.customDownloadPath.value = savedPath;
+
+elements.customDownloadPath?.addEventListener('change', (e) => {
+  localStorage.setItem('vm_mobile_save_path', e.target.value.trim());
+});
+
+elements.browseDownloadPathBtn?.addEventListener('click', () => {
+  const current = elements.customDownloadPath?.value || 'B:\\';
+  const newPath = prompt('حدد أو ادخل مسار مجلد التحميل الافتراضي:', current);
+  if (newPath && newPath.trim()) {
+    elements.customDownloadPath.value = newPath.trim();
+    localStorage.setItem('vm_mobile_save_path', newPath.trim());
+    alert(`تم تحديد مجلد التحميل الافتراضي: ${newPath.trim()}`);
+  }
 });
 
 elements.defaultQualitySelect?.addEventListener('change', (e) => {

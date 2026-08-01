@@ -214,6 +214,17 @@
           </select>
         </div>
 
+        <!-- Default Download Path & Browse -->
+        <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
+          <label style="margin-bottom:6px;"><i class="fas fa-folder"></i> <span>مجلد التحميل الافتراضي</span></label>
+          <div style="display:flex; gap:6px; width:100%;">
+            <input type="text" id="customDownloadPath" value="B:\" style="flex:1; background:var(--bg-input); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:8px 12px; color:var(--text-main); font-size:13px;">
+            <button type="button" class="btn-mobile-secondary" id="browseDownloadPathBtn" style="padding:8px 14px;">
+              <i class="fas fa-folder-open"></i> <span>تصفح</span>
+            </button>
+          </div>
+        </div>
+
         <!-- 3. Turbo Mode -->
         <div class="setting-row toggle">
           <label><i class="fas fa-tachometer-alt"></i> <span>وضع التوربو (تحميل أسرع)</span></label>
