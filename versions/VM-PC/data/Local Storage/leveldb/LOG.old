@@ -1,3 +1,3 @@
-2026/08/01-08:21:12.039 218c Reusing MANIFEST B:\VM-PC\data\Local Storage\leveldb/MANIFEST-000001
-2026/08/01-08:21:12.041 218c Recovering log #3
-2026/08/01-08:21:12.041 218c Reusing old log B:\VM-PC\data\Local Storage\leveldb/000003.log 
+2026/08/01-08:39:27.939 1794 Reusing MANIFEST B:\VM-PC\data\Local Storage\leveldb/MANIFEST-000001
+2026/08/01-08:39:27.947 1794 Recovering log #3
+2026/08/01-08:39:27.948 1794 Reusing old log B:\VM-PC\data\Local Storage\leveldb/000003.log 

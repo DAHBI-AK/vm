@@ -1,0 +1,27 @@
+const { contextBridge, ipcRenderer } = require('electron');
+
+contextBridge.exposeInMainWorld('electronAPI', {
+  getVideoInfo: (url) => ipcRenderer.invoke('get-video-info', url),
+  downloadVideo: (data) => ipcRenderer.invoke('download', data),
+  getAppStatus: () => ipcRenderer.invoke('get-app-status'),
+  repairApp: () => ipcRenderer.invoke('repair-app'),
+  clearCache: () => ipcRenderer.invoke('clear-cache'),
+  getStreamUrl: (data) => ipcRenderer.invoke('get-stream-url', data),
+  getPreviewSubtitles: (data) => ipcRenderer.invoke('get-preview-subtitles', data),
+  getSupportedPlatforms: () => ipcRenderer.invoke('get-supported-platforms'),
+  openDownloads: (customPath) => ipcRenderer.invoke('open-downloads', customPath),
+  openPath: (filePath) => ipcRenderer.invoke('open-path', filePath),
+  showItemInFolder: (filePath) => ipcRenderer.invoke('show-item-in-folder', filePath),
+  setLanguage: (lang) => ipcRenderer.invoke('set-language', lang),
+  selectDownloadFolder: (currentPath) => ipcRenderer.invoke('select-download-folder', currentPath),
+  getDownloadsPath: () => ipcRenderer.invoke('get-downloads-path'),
+  setClipboardWatch: (enabled) => ipcRenderer.invoke('set-clipboard-watch', enabled),
+  dismissClipboardUrl: (url) => ipcRenderer.invoke('dismiss-clipboard-url', url),
+  showNotification: (data) => ipcRenderer.invoke('show-notification', data),
+  onStatus: (callback) => ipcRenderer.on('status', (event, data) => callback(data)),
+  onClipboardUrlDetected: (callback) => ipcRenderer.on('clipboard-url-detected', (event, data) => callback(data)),
+  onAppReady: (callback) => ipcRenderer.on('app-ready', (event, data) => callback(data)),
+  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, data) => callback(data)),
+  onDownloadDestination: (callback) => ipcRenderer.on('download-destination', (event, data) => callback(data)),
+  removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
+});
