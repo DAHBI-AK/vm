@@ -1,12 +1,12 @@
 {
   "id": "com.vm.downloader.mobile",
-  "name": "VM Mobile Downloader",
-  "short_name": "VM Mobile",
-  "description": "تطبيق تحميل الفيديوهات المطور للجوال والأجهزة الذكية",
+  "name": "VM",
+  "short_name": "VM",
+  "description": "تطبيق VM الرسمي لتحميل الفيديوهات والأغاني للجوال والأجهزة الذكية",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b0f19",
-  "theme_color": "#00f2fe",
+  "theme_color": "#e11d48",
   "orientation": "portrait",
   "icons": [
     {
