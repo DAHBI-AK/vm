@@ -5,33 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>VM</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#060913">
-  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#0b0f19">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="icon" type="image/png" href="assets/icon.png">
-  <link rel="apple-touch-icon" href="assets/icon.png">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        try {
-          const swUrl = new URL('sw.js', window.location.href).href;
-          navigator.serviceWorker.register(swUrl)
-            .then(reg => console.log('PWA Service Worker Registered:', reg.scope))
-            .catch(err => console.warn('SW Registration Notice:', err));
-        } catch (e) {}
-      });
-    }
-  </script>
 </head>
 <body>
   <!-- Mobile App Header -->
   <header class="mobile-header">
     <div class="mobile-brand">
-      <img src="assets/icon.png" alt="VM Logo" class="brand-icon">
+      <i class="fas fa-bolt brand-icon"></i>
       <div class="brand-text">
         <h1>VM</h1>
         <span>Downloader Pro</span>
@@ -47,19 +32,17 @@
     </div>
   </header>
 
-  <!-- Main Views Container -->
-  <main class="mobile-app-container">
-    
-    <!-- 1. Downloader Tab View -->
+  <!-- Mobile Main Content Container -->
+  <main class="mobile-main">
+    <!-- Downloader Tab View -->
     <section class="tab-view active" id="downloaderTab">
-      
-      <!-- Search & Input Card -->
       <div class="mobile-search-card">
-        <div class="input-with-icon">
-          <input type="text" id="videoUrl" placeholder="ألصق رابط الفيديو هنا (YouTube, TikTok, Instagram, Facebook...)">
-          <i class="fas fa-link"></i>
+        <div class="input-wrapper">
+          <i class="fas fa-link input-icon"></i>
+          <input type="text" id="videoUrl" placeholder="ألصق رابط الفيديو هنا..." autocomplete="off">
+          <button type="button" class="btn-input-clear" id="clearBtn"><i class="fas fa-times"></i></button>
         </div>
-
+        
         <div class="mobile-action-bar">
           <button type="button" class="btn-mobile-primary" id="fetchBtn">
             <i class="fas fa-search"></i> <span>بحث والجلب</span>
@@ -77,208 +60,105 @@
       </div>
 
       <!-- Batch Queue Panel -->
-      <div class="mobile-studio-card hidden" id="batchQueuePanel">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-          <h4 style="margin:0; font-size:14px;"><i class="fas fa-layer-group" style="color:var(--primary);"></i> <span>سلسلة روابط بدون قيود</span></h4>
-          <button type="button" id="closeBatchBtn" style="background:none; border:none; color:var(--text-secondary); font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+      <div class="batch-queue-panel hidden" id="batchQueuePanel">
+        <div class="batch-panel-header">
+          <h4><i class="fas fa-layer-group"></i> <span>سلسلة روابط بدون قيود</span></h4>
+          <button type="button" class="btn-close-batch" id="closeBatchBtn"><i class="fas fa-times"></i></button>
         </div>
-        <p style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;">ألصق عدة روابط متتالية (رابط في كل سطر):</p>
-        <textarea id="batchUrlsText" rows="3" placeholder="https://youtube.com/watch?v=...&#10;https://tiktok.com/@user/video/..." style="width:100%; background:var(--bg-input); border:1px solid var(--border-color); border-radius:8px; padding:8px; color:var(--text-main); font-size:12px; font-family:monospace; resize:vertical; margin-bottom:8px;"></textarea>
-        <div style="display:flex; gap:6px;">
-          <button type="button" class="btn-mobile-secondary" id="pasteAddBatchBtn" style="flex:1;"><i class="fas fa-paste"></i> <span>لصق وإضافة</span></button>
-          <button type="button" class="btn-mobile-primary" id="startBatchBtn" disabled style="flex:1;"><i class="fas fa-play"></i> <span>بدء التحميل</span></button>
-          <button type="button" class="btn-mobile-secondary" id="clearBatchBtn" style="flex:1;"><i class="fas fa-trash"></i> <span>إفراغ</span></button>
+        <textarea id="batchUrlsText" placeholder="ألصق روابط متتالية (رابط في كل سطر)..." rows="3"></textarea>
+        <div class="batch-actions">
+          <button type="button" class="btn-mobile-action" id="pasteAddBatchBtn"><i class="fas fa-paste"></i> <span>لصق وإضافة</span></button>
+          <button type="button" class="btn-mobile-action primary" id="startBatchBtn" disabled><i class="fas fa-play"></i> <span>بدء التحميل</span></button>
         </div>
-        <div id="batchQueueList" style="margin-top:8px;"></div>
+        <div class="batch-queue-list" id="batchQueueList"></div>
+      </div>
+
+      <!-- Platform Tags -->
+      <div class="platform-chips">
+        <span class="chip"><i class="fab fa-youtube"></i> YouTube</span>
+        <span class="chip"><i class="fab fa-tiktok"></i> TikTok</span>
+        <span class="chip"><i class="fab fa-instagram"></i> Instagram</span>
+        <span class="chip"><i class="fab fa-facebook"></i> Facebook</span>
+        <span class="chip"><i class="fab fa-twitter"></i> X / Twitter</span>
+        <span class="chip">+100 منصة</span>
       </div>
 
       <!-- Loading State -->
-      <div class="mobile-video-card hidden" id="loadingState" style="text-align:center; padding:24px;">
-        <i class="fas fa-spinner fa-spin" style="font-size:32px; color:var(--primary); margin-bottom:10px;"></i>
-        <p style="font-size:13px; color:var(--text-secondary);">جاري تحليل رابط الفيديو بالذكاء الاصطناعي...</p>
+      <div class="loading-state" id="loadingState">
+        <div class="mobile-spinner"></div>
+        <p>جاري تحليل رابط الفيديو بالذكاء الاصطناعي...</p>
       </div>
 
       <!-- Video Info Card -->
-      <div class="mobile-video-card hidden" id="videoCard">
-        <div style="display:flex; gap:12px; align-items:center;">
-          <div style="position:relative; width:100px; height:60px; border-radius:8px; overflow:hidden; background:#000; flex-shrink:0;">
-            <img src="" id="thumbnailImg" alt="غلاف الفيديو" style="width:100%; height:100%; object-fit:cover;">
-            <span id="durationBadge" style="position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.8); color:#fff; font-size:10px; padding:2px 4px; border-radius:4px;">00:00</span>
-          </div>
-          <div style="overflow:hidden;">
-            <h3 id="videoTitle" style="font-size:13px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:4px;">عنوان الفيديو</h3>
-            <p id="uploaderName" style="font-size:11px; color:var(--text-secondary);"><i class="fas fa-user-circle"></i> اسم القناة</p>
-          </div>
+      <div class="mobile-video-card" id="videoCard">
+        <div class="thumbnail-wrapper">
+          <img src="" id="thumbnailImg" alt="غلاف الفيديو">
+          <span class="duration-badge" id="durationBadge">00:00</span>
+        </div>
+        <div class="video-details">
+          <h3 id="videoTitle">عنوان الفيديو</h3>
+          <p id="uploaderName">اسم القناة</p>
         </div>
       </div>
 
       <!-- Video Preview Player Card (مشاهدة الفيديو قبل التحميل) -->
-      <div class="mobile-video-preview-card hidden" id="videoPreviewCard">
+      <div class="mobile-video-preview-card hidden" id="videoPreviewCard" style="margin-top:12px; background:var(--bg-card); border-radius:14px; padding:14px; border:1px solid rgba(255,255,255,0.08);">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
-          <h4 style="margin:0; font-size:13px; color:var(--text-main); font-weight:700;"><i class="fas fa-eye" style="color:var(--primary);"></i> <span>مشاهدة الفيديو قبل التحميل</span></h4>
-          <span id="globalSettingsBadge" style="font-size:11px; background:rgba(0,242,254,0.15); color:var(--primary); padding:3px 8px; border-radius:6px; font-weight:700;">إعدادات عامة [الجودة: best | فيديو وصوت]</span>
+          <h4 style="margin:0; font-size:14px; color:var(--text-main);"><i class="fas fa-eye" style="color:var(--primary);"></i> <span>مشاهدة الفيديو قبل التحميل</span></h4>
+          <span id="globalSettingsBadge" style="font-size:11px; background:rgba(0,242,254,0.15); color:var(--primary); padding:4px 8px; border-radius:6px; font-weight:bold;">إعدادات عامة [الجودة: best | فيديو وصوت]</span>
         </div>
         
-        <div id="videoEmbedContainer" style="width:100%; min-height:190px; background:#000; border-radius:10px; overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center;">
-          <p style="color:var(--text-secondary); font-size:12px;">جاري تحميل المعاينة المباشرة...</p>
+        <div id="videoEmbedContainer" style="width:100%; min-height:200px; background:#000; border-radius:10px; overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center;">
+          <p style="color:#64748b; font-size:12px;">جاري تحميل المعاينة المباشرة...</p>
         </div>
 
-        <div style="display:flex; gap:8px; margin-top:8px;">
-          <button type="button" class="btn-mobile-secondary" id="refreshPreviewBtn" style="flex:1;">
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button type="button" class="btn-mobile-secondary" id="refreshPreviewBtn" style="flex:1; padding:8px 12px; font-size:13px;">
             <i class="fas fa-sync-alt"></i> <span>تحديث المعاينة</span>
           </button>
         </div>
       </div>
 
-      <!-- Production Studio PRO (استوديو الإنتاج 100% المطابق لنسخة البيسي) -->
-      <div class="mobile-studio-card hidden" id="studioPanel">
+      <!-- Studio Panel (استوديو الإنتاج PRO - المطابق لنسخة البيسي 100%) -->
+      <div class="mobile-studio-card" id="studioPanel" style="margin-top:12px; background:var(--bg-card); border-radius:14px; padding:14px; border:1px solid rgba(255,255,255,0.08);">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <h4 style="margin:0; font-size:14px; color:var(--text-main); font-weight:800;">
+          <h4 style="margin:0; font-size:15px; color:var(--text-main); font-weight:bold;">
             <i class="fas fa-sliders-h" style="color:var(--primary);"></i> <span>استوديو الإنتاج</span>
-            <span style="background:linear-gradient(135deg,#ef4444,#f59e0b); color:#fff; font-size:10px; font-weight:800; padding:2px 6px; border-radius:4px; margin-right:6px;">PRO</span>
+            <span style="background:linear-gradient(135deg,#ef4444,#f59e0b); color:#fff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-right:6px;">PRO</span>
           </h4>
         </div>
-        <p style="font-size:11px; color:var(--text-secondary); margin-bottom:10px;">
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px; line-height:1.4;">
           قص مقاطع دقيقة أو استخراج صور بجودة احترافية وترجمة ودبلجة بالذكاء الاصطناعي
         </p>
 
         <!-- 4 Main Studio Tabs -->
-        <div class="studio-tabs-row" id="studioModeTabs" style="display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-bottom:10px;">
-          <button type="button" class="btn-mobile-secondary active mobile-studio-tab" data-mode="full" style="padding:8px 2px; font-size:10px; flex-direction:column;"><i class="fas fa-film" style="font-size:14px;"></i><span>تحميل كامل</span></button>
-          <button type="button" class="btn-mobile-secondary mobile-studio-tab" data-mode="clip" style="padding:8px 2px; font-size:10px; flex-direction:column;"><i class="fas fa-cut" style="font-size:14px;"></i><span>قص مقطع</span></button>
-          <button type="button" class="btn-mobile-secondary mobile-studio-tab" data-mode="image" style="padding:8px 2px; font-size:10px; flex-direction:column;"><i class="fas fa-image" style="font-size:14px;"></i><span>صورة</span></button>
-          <button type="button" class="btn-mobile-secondary mobile-studio-tab" data-mode="aidub" style="padding:8px 2px; font-size:10px; flex-direction:column;"><i class="fas fa-language" style="font-size:14px;"></i><span>ترجمة ودبلجة</span></button>
-        </div>
-
-        <!-- 1. Clip Workspace (قص مقطع) -->
-        <div class="studio-workspace clip-workspace hidden" id="clipWorkspace" style="background:var(--bg-input); padding:10px; border-radius:10px; margin-bottom:10px;">
-          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-bottom:10px; text-align:center;">
-            <div style="background:var(--bg-card); padding:6px; border-radius:6px;">
-              <span style="font-size:9px; color:var(--text-secondary); display:block;">مدة الفيديو</span>
-              <strong id="clipVideoDurationLabel" style="font-size:11px;">00:00:00</strong>
-            </div>
-            <div style="background:var(--bg-card); padding:6px; border-radius:6px;">
-              <span style="font-size:9px; color:var(--text-secondary); display:block;">مدة المقطع</span>
-              <strong id="clipDurationLabel" style="font-size:11px; color:#22c55e;">00:30</strong>
-            </div>
-            <div style="background:var(--bg-card); padding:6px; border-radius:6px;">
-              <span style="font-size:9px; color:var(--text-secondary); display:block;">النطاق</span>
-              <strong id="clipRangeLabel" style="font-size:10px; color:var(--primary);">00:00 → 00:30</strong>
-            </div>
-          </div>
-
-          <div style="margin-bottom:8px;">
-            <label style="font-size:11px; display:block; margin-bottom:2px;">البداية: <strong id="clipStartValue">00:00:00</strong></label>
-            <input type="range" id="clipStartRange" min="0" max="100" value="0" step="1" style="width:100%;">
-            <label style="font-size:11px; display:block; margin-top:6px; margin-bottom:2px;">النهاية: <strong id="clipEndValue">00:00:30</strong></label>
-            <input type="range" id="clipEndRange" min="0" max="100" value="30" step="1" style="width:100%;">
-          </div>
-
-          <!-- Preset Quick Chips -->
-          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-bottom:8px;">
-            <button type="button" class="btn-mobile-secondary" id="presetFirst30" style="padding:4px; font-size:9px;">أول 30 ثانية</button>
-            <button type="button" class="btn-mobile-secondary" id="presetFullMin" style="padding:4px; font-size:9px;">دقيقة كاملة</button>
-            <button type="button" class="btn-mobile-secondary" id="presetMiddle" style="padding:4px; font-size:9px;">من المنتصف</button>
-            <button type="button" class="btn-mobile-secondary" id="presetLast30" style="padding:4px; font-size:9px;">آخر 30 ثانية</button>
-          </div>
-
-          <!-- Audio Mode Radio Buttons -->
-          <div style="display:flex; justify-content:center; gap:12px; font-size:11px;">
-            <label style="cursor:pointer;"><input type="radio" name="clipAudioMode" value="with_audio" checked> <span>مقطع مع صوت</span></label>
-            <label style="cursor:pointer;"><input type="radio" name="clipAudioMode" value="no_audio"> <span>مقطع بدون صوت</span></label>
+        <div class="studio-tabs-row" id="studioModeTabs" style="display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-bottom:12px;">
           </div>
         </div>
 
-        <!-- 2. Image Workspace (صورة) -->
-        <div class="studio-workspace image-workspace hidden" id="imageWorkspace" style="background:var(--bg-input); padding:10px; border-radius:10px; margin-bottom:10px;">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
-            <button type="button" class="btn-mobile-secondary active" id="imgModeThumb" style="padding:8px; font-size:11px;">
-              <i class="fas fa-image"></i> <strong>الصورة المصغرة</strong>
-            </button>
-            <button type="button" class="btn-mobile-secondary" id="imgModeFrame" style="padding:8px; font-size:11px;">
-              <i class="fas fa-camera"></i> <strong>لقطة من الفيديو</strong>
-            </button>
-          </div>
-
-          <div id="frameSeekWrap" class="hidden" style="margin-bottom:8px; background:var(--bg-card); padding:8px; border-radius:8px;">
-            <label style="font-size:11px; display:block; margin-bottom:2px;">اختر وقت اللقطة: <strong id="frameSeekLabel" style="color:var(--primary);">00:00:05</strong></label>
-            <input type="range" id="frameSeekRange" min="0" max="100" value="5" step="1" style="width:100%;">
-          </div>
-
-          <div style="text-align:center;">
-            <span style="font-size:11px; color:var(--text-secondary); margin-left:6px;">صيغة الصورة:</span>
-            <div style="display:inline-flex; gap:4px; background:var(--bg-card); padding:2px; border-radius:6px;">
-              <button type="button" class="img-fmt-btn active" data-fmt="jpg" style="padding:3px 10px; border-radius:4px; border:none; background:var(--primary); color:#000; font-weight:bold; font-size:10px; cursor:pointer;">JPG</button>
-              <button type="button" class="img-fmt-btn" data-fmt="png" style="padding:3px 10px; border-radius:4px; border:none; background:transparent; color:var(--text-main); font-size:10px; cursor:pointer;">PNG</button>
-              <button type="button" class="img-fmt-btn" data-fmt="webp" style="padding:3px 10px; border-radius:4px; border:none; background:transparent; color:var(--text-main); font-size:10px; cursor:pointer;">WEBP</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3. AI Dubbing Workspace (ترجمة ودبلجة) -->
-        <div class="studio-workspace aidub-workspace hidden" id="aiDubWorkspace" style="background:var(--bg-input); padding:10px; border-radius:10px; margin-bottom:10px;">
-          <!-- 3 Submodes -->
-          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin-bottom:8px;">
-            <button type="button" class="aidub-submode-btn active" data-submode="dub_only" style="padding:6px 2px; border-radius:6px; border:1px solid var(--primary); background:rgba(0,242,254,0.1); color:var(--text-main); font-size:10px; text-align:center; cursor:pointer;">
-              <i class="fas fa-robot" style="display:block; margin-bottom:2px; font-size:12px; color:var(--primary);"></i>
-              <strong>دبلجة ذكية AI</strong>
-            </button>
-            <button type="button" class="aidub-submode-btn" data-submode="sub_only" style="padding:6px 2px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:var(--bg-card); color:var(--text-main); font-size:10px; text-align:center; cursor:pointer;">
-              <i class="fas fa-closed-captioning" style="display:block; margin-bottom:2px; font-size:12px; color:#f59e0b;"></i>
-              <strong>ترجمة نصية</strong>
-            </button>
-            <button type="button" class="aidub-submode-btn" data-submode="dub_and_sub" style="padding:6px 2px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:var(--bg-card); color:var(--text-main); font-size:10px; text-align:center; cursor:pointer;">
-              <i class="fas fa-layer-group" style="display:block; margin-bottom:2px; font-size:12px; color:#ec4899;"></i>
-              <strong>دبلجة وترجمة</strong>
-            </button>
-          </div>
-
-          <!-- Alert Banner -->
-          <div id="aiDubInfoBanner" style="background:rgba(59,130,246,0.15); border:1px solid rgba(59,130,246,0.3); border-radius:6px; padding:6px 8px; font-size:10px; color:#93c5fd; margin-bottom:8px;">
-            <i class="fas fa-info-circle"></i> <span id="aiDubInfoText">الدبلجة الذكية: تُترجم الترجمة التلقائية ثم يُولَّد صوت جديد — يُزال الصوت الأصلي بالكامل</span>
-          </div>
-
-          <div style="margin-bottom:6px;">
-            <label style="font-size:10px; display:block; margin-bottom:2px; color:var(--text-secondary);">لغة الدبلجة / الترجمة:</label>
-            <select id="dubTargetLangSelect" style="width:100%; background:var(--bg-card); border:1px solid var(--border-color); border-radius:6px; padding:6px; color:var(--text-main); font-size:11px;">
-              <option value="ar">العربية (الفصحى)</option>
-              <option value="ar-MA">العربية (اللهجة المغربية)</option>
-              <option value="ar-EG">العربية (اللهجة المصرية)</option>
-              <option value="ar-SA">العربية (اللهجة السعودية)</option>
-              <option value="fr">الفرنسية (Français)</option>
-              <option value="en">الإنجليزية (English)</option>
-            </select>
-          </div>
-
-          <div>
-            <label style="font-size:10px; display:block; margin-bottom:2px; color:var(--text-secondary);">نبرة وصوت الدبلجة بالذكاء الاصطناعي:</label>
-            <select id="dubVoiceProfileSelect" style="width:100%; background:var(--bg-card); border:1px solid var(--border-color); border-radius:6px; padding:6px; color:var(--text-main); font-size:11px;">
-              <option value="auto">تلقائي (افتراضي ذكي)</option>
-              <option value="female-soft">أنثوي ناعم</option>
-              <option value="male-normal">شاب طبيعي</option>
-              <option value="male-deep">رجل عميق</option>
-              <option value="young-energetic">شبابي حماسي</option>
-            </select>
+        <div class="studio-workspace image-workspace" id="imageWorkspace">
+          <div class="image-mode-grid">
+            <button type="button" class="image-card active" data-image-mode="thumbnail"><i class="fas fa-image"></i><span>الغلاف الاصلي</span></button>
+            <button type="button" class="image-card" data-image-mode="frame"><i class="fas fa-camera"></i><span>إطار من الفيديو</span></button>
           </div>
         </div>
       </div>
 
-      <!-- Quality Options Panel -->
-      <div class="mobile-options-card hidden" id="downloadOptions">
-        <h4 style="font-size:14px; font-weight:700; margin-bottom:8px;"><i class="fas fa-sliders-h"></i> <span>خيارات الجودة</span></h4>
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:10px;" id="downloadTypeTabs">
-          <button type="button" class="btn-mobile-secondary active type-pill" data-type="video-audio"><i class="fas fa-video"></i> <span>فيديو + صوت</span></button>
-          <button type="button" class="btn-mobile-secondary type-pill" data-type="video-only"><i class="fas fa-film"></i> <span>فيديو فقط</span></button>
-          <button type="button" class="btn-mobile-secondary type-pill" data-type="audio"><i class="fas fa-music"></i> <span>صوت MP3</span></button>
+      <!-- Download Options Panel -->
+      <div class="mobile-options-card" id="downloadOptions">
+        <h4><i class="fas fa-sliders-h"></i> <span>خيارات الجودة</span></h4>
+        <div class="type-pills" id="downloadTypeTabs">
+          <button type="button" class="type-pill active" data-type="video-audio"><i class="fas fa-video"></i> <span>فيديو + صوت</span></button>
+          <button type="button" class="type-pill" data-type="video-only"><i class="fas fa-film"></i> <span>فيديو فقط</span></button>
+          <button type="button" class="type-pill" data-type="audio"><i class="fas fa-music"></i> <span>صوت MP3</span></button>
         </div>
-        
         <div class="mobile-quality-grid" id="unifiedQualityGrid"></div>
 
-        <div style="margin-bottom:10px;">
-          <input type="text" id="filenameInput" placeholder="اسم الملف الافتراضي..." style="width:100%; background:var(--bg-input); border:1px solid var(--border-color); border-radius:8px; padding:10px; color:var(--text-main); font-size:12px;">
+        <div class="mobile-filename-row">
+          <input type="text" id="filenameInput" placeholder="اسم الملف...">
         </div>
 
-        <div style="display:flex; gap:8px;">
+        <div class="mobile-download-btn-wrap" style="display:flex; gap:8px;">
           <button type="button" class="btn-mobile-download" id="downloadBtn" style="flex:2;">
             <i class="fas fa-download"></i> <span id="downloadBtnText">بدء التحميل المباشر</span>
           </button>
@@ -288,51 +168,47 @@
         </div>
       </div>
 
-      <!-- Progress Bar Container -->
-      <div class="mobile-video-card hidden" id="progressContainer">
-        <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:6px;">
-          <span id="progressInfo">جاري التحميل المعالجة...</span>
-          <span id="progressPercent" style="color:var(--primary);">0%</span>
+      <!-- Progress Container -->
+      <div class="mobile-progress-card" id="progressContainer">
+        <div class="progress-info-row">
+          <span>جاري التحميل...</span>
+          <strong id="progressPercent">0%</strong>
         </div>
-        <div style="width:100%; height:8px; background:var(--bg-input); border-radius:4px; overflow:hidden;">
-          <div id="progressFill" style="width:0%; height:100%; background:var(--primary-gradient); transition:width 0.2s linear;"></div>
-        </div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+        <p class="progress-detail" id="progressInfo"></p>
       </div>
 
       <!-- Success Card -->
-      <div class="mobile-success-card hidden" id="successMessage" style="text-align:center;">
-        <i class="fas fa-check-circle" style="font-size:42px; color:var(--accent-green); margin-bottom:8px;"></i>
-        <h3 style="font-size:16px; margin-bottom:4px;">تم التحميل بنجاح!</h3>
-        <p id="successPath" style="font-size:11px; color:var(--text-secondary); word-break:break-all; margin-bottom:12px;"></p>
-        <div style="display:flex; gap:6px;">
-          <button type="button" class="btn-mobile-primary" id="newDownloadBtn" style="flex:1;"><i class="fas fa-plus"></i> <span>تحميل جديد</span></button>
-          <button type="button" class="btn-mobile-secondary" id="openFolderBtn" style="flex:1;"><i class="fas fa-folder-open"></i> <span>مكان الحفظ</span></button>
+      <div class="mobile-success-card" id="successMessage">
+        <i class="fas fa-check-circle success-icon"></i>
+        <h3>تم التحميل بنجاح!</h3>
+        <p id="successPath"></p>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button type="button" class="btn-mobile-primary" id="newDownloadBtn" style="flex:1;"><i class="fas fa-plus"></i> <span>تحميل فيديو جديد</span></button>
+          <button type="button" class="btn-mobile-secondary" id="openFolderBtn" style="flex:1;"><i class="fas fa-folder-open"></i> <span>فتح مكان الحفظ</span></button>
           <button type="button" class="btn-mobile-secondary" id="playLastVideoBtn" style="flex:1;"><i class="fas fa-play"></i> <span>تشغيل الفيديو</span></button>
         </div>
       </div>
     </section>
 
-    <!-- 2. History Tab View -->
+    <!-- History Tab View -->
     <section class="tab-view" id="historyTab">
-      <div class="section-title" style="display:flex; align-items:center; justify-content:space-between;">
-        <h3><i class="fas fa-history"></i> <span>سجل التحميلات</span></h3>
-        <button type="button" class="btn-mobile-secondary" id="clearHistoryBtn" style="padding:4px 10px; font-size:11px;"><i class="fas fa-trash"></i> <span>مسح السجل</span></button>
-      </div>
+      <div class="section-title"><h3><i class="fas fa-history"></i> <span>سجل التحميلات</span></h3></div>
       <div class="history-list" id="historyList"></div>
     </section>
 
-    <!-- 3. Platforms Tab View -->
+    <!-- Platforms Tab View -->
     <section class="tab-view" id="platformsTab">
       <div class="section-title"><h3><i class="fas fa-globe"></i> <span>المنصات المدعومة (+100)</span></h3></div>
-      <div class="platforms-grid" id="platformsGrid" style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px;"></div>
+      <div class="platforms-grid" id="platformsGrid"></div>
     </section>
 
-    <!-- 4. Settings Tab View -->
+    <!-- Settings Tab View -->
     <section class="tab-view" id="settingsTab">
       <div class="section-title"><h3><i class="fas fa-cog"></i> <span>إعدادات الجوال الشاملة</span></h3></div>
       
       <div class="mobile-settings-card">
-        <!-- Language -->
+        <!-- 1. Language -->
         <div class="setting-row">
           <label><i class="fas fa-language"></i> <span>تغيير اللغة</span></label>
           <select id="languageSelect">
@@ -342,7 +218,7 @@
           </select>
         </div>
 
-        <!-- Default Quality -->
+        <!-- 2. Default Quality -->
         <div class="setting-row">
           <label><i class="fas fa-film"></i> <span>جودة الفيديو الافتراضية</span></label>
           <select id="defaultQualitySelect">
@@ -353,79 +229,98 @@
           </select>
         </div>
 
-        <!-- Default Save Path & Browse -->
+        <!-- Default Download Path & Browse -->
         <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
           <label style="margin-bottom:6px;"><i class="fas fa-folder"></i> <span>مجلد التحميل الافتراضي</span></label>
           <div style="display:flex; gap:6px; width:100%;">
-            <input type="text" id="customDownloadPath" value="B:\" style="flex:1;">
-            <button type="button" class="btn-mobile-secondary" id="browseDownloadPathBtn" style="padding:8px 12px;"><i class="fas fa-folder-open"></i> <span>تصفح</span></button>
+            <input type="text" id="customDownloadPath" value="B:\" style="flex:1; background:var(--bg-input); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:8px 12px; color:var(--text-main); font-size:13px;">
+            <button type="button" class="btn-mobile-secondary" id="browseDownloadPathBtn" style="padding:8px 14px;">
+              <i class="fas fa-folder-open"></i> <span>تصفح</span>
+            </button>
           </div>
           <div style="display:flex; gap:6px; width:100%; margin-top:8px;">
-            <button type="button" class="btn-mobile-secondary" id="choosePathBtn" style="flex:1; font-size:11px;"><i class="fas fa-search-location"></i> <span>اختيار المسار</span></button>
-            <button type="button" class="btn-mobile-secondary" id="openLastVideoFolderBtn" style="flex:1; font-size:11px;"><i class="fas fa-folder-open"></i> <span>فتح مجلد آخر فيديو</span></button>
+            <button type="button" class="btn-mobile-secondary" id="choosePathBtn" style="flex:1; font-size:12px;">
+              <i class="fas fa-search-location"></i> <span>اختيار المسار</span>
+            </button>
+            <button type="button" class="btn-mobile-secondary" id="openLastVideoFolderBtn" style="flex:1; font-size:12px;">
+              <i class="fas fa-folder-open"></i> <span>فتح مجلد آخر فيديو</span>
+            </button>
           </div>
         </div>
 
-        <!-- Toggles -->
+        <!-- 3. Turbo Mode -->
         <div class="setting-row toggle">
           <label><i class="fas fa-tachometer-alt"></i> <span>وضع التوربو (تحميل أسرع)</span></label>
           <input type="checkbox" id="turboMode" checked>
         </div>
 
+        <!-- 4. Audio Enhancer HD -->
         <div class="setting-row toggle">
           <label><i class="fas fa-sliders-h"></i> <span>تحسين جودة الصوت تلقائياً (Audio Enhancer HD)</span></label>
           <input type="checkbox" id="audioEnhanceToggle" checked>
         </div>
 
+        <!-- 5. Auto Clipboard Detection -->
         <div class="setting-row toggle">
           <label><i class="fas fa-paste"></i> <span>اكتشاف الروابط من الحافظة تلقائياً</span></label>
           <input type="checkbox" id="autoClipboardToggle" checked>
         </div>
 
+        <!-- 6. Completion Notifications -->
         <div class="setting-row toggle">
           <label><i class="fas fa-bell"></i> <span>إشعارات اكتمال التحميل</span></label>
           <input type="checkbox" id="notificationsToggle" checked>
         </div>
 
-        <div class="setting-row" style="margin-top:8px;">
-          <button type="button" class="btn-mobile-secondary" id="clearCacheBtn" style="width:100%;"><i class="fas fa-trash-alt"></i> <span>مسح الذاكرة المؤقتة والسجل</span></button>
+        <!-- 7. Clear Cache -->
+        <div class="setting-row" style="margin-top:10px;">
+          <button type="button" class="btn-mobile-secondary" id="clearCacheBtn" style="width:100%;">
+            <i class="fas fa-trash-alt"></i> <span>مسح الذاكرة المؤقتة والسجل</span>
+          </button>
         </div>
       </div>
 
       <!-- Automatic Sequential Batch Queue Card -->
       <div class="mobile-settings-card" style="margin-top:14px;">
-        <h4 style="margin-bottom:6px; color:var(--primary); font-size:14px;"><i class="fas fa-list-ol"></i> <span>تحميل سلسلة روابط متتالية تلقائياً</span></h4>
-        <p style="font-size:11px; color:var(--text-secondary); margin-bottom:8px;">ألصق عدة روابط متتالية (رابط في كل سطر). وسيتم تنزيل كل رابط تلقائياً بعد اكتمال السابق بنفس الإعدادات:</p>
-        <textarea id="settingsBatchUrlsText" rows="3" placeholder="https://youtube.com/watch?v=...&#10;https://tiktok.com/@user/video/..." style="width:100%; background:var(--bg-input); border:1px solid var(--border-color); border-radius:8px; padding:8px; color:var(--text-main); font-size:11px; font-family:monospace; resize:vertical; margin-bottom:8px;"></textarea>
-        <div style="display:flex; flex-direction:column; gap:6px;">
-          <button type="button" class="btn-mobile-secondary" id="settingsPasteAddBatchBtn"><i class="fas fa-paste"></i> <span>لصق وإضافة للقائمة</span></button>
-          <button type="button" class="btn-mobile-primary" id="settingsStartBatchBtn" disabled><i class="fas fa-play"></i> <span>بدء تحميل السلسلة تلقائياً</span></button>
-          <button type="button" class="btn-mobile-secondary" id="settingsClearBatchBtn"><i class="fas fa-trash-alt"></i> <span>إفراغ القائمة</span></button>
+        <h4 style="margin-bottom:6px; color:var(--primary); font-size:15px;">
+          <i class="fas fa-list-ol"></i> <span>تحميل سلسلة روابط متتالية تلقائياً</span>
+        </h4>
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px; line-height:1.5;">
+          ألصق عدة روابط متتالية (رابط في كل سطر). وسيتم تنزيل كل رابط تلقائياً بعد اكتمال السابق بنفس الإعدادات:
+        </p>
+        <textarea id="settingsBatchUrlsText" rows="4" placeholder="https://youtube.com/watch?v=...&#10;https://tiktok.com/@user/video/...&#10;https://instagram.com/p/..." style="width:100%; background:var(--bg-input); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px; color:var(--text-main); font-size:12px; resize:vertical; font-family:monospace; margin-bottom:8px;"></textarea>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn-mobile-secondary" id="settingsPasteAddBatchBtn">
+            <i class="fas fa-paste"></i> <span>لصق وإضافة للقائمة</span>
+          </button>
+          <button type="button" class="btn-mobile-primary" id="settingsStartBatchBtn" disabled>
+            <i class="fas fa-play"></i> <span>بدء تحميل السلسلة تلقائياً</span>
+          </button>
+          <button type="button" class="btn-mobile-secondary" id="settingsClearBatchBtn">
+            <i class="fas fa-trash-alt"></i> <span>إفراغ القائمة</span>
+          </button>
         </div>
-        <div id="settingsBatchQueueList" style="margin-top:8px;"></div>
+        <div id="settingsBatchQueueList" style="margin-top:10px;"></div>
       </div>
 
       <!-- System Health & Auto Repair Card -->
       <div class="mobile-settings-card" style="margin-top:14px;">
-        <h4 style="margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;">
+        <h4 style="margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
           <span><i class="fas fa-heartbeat"></i> <span>صحة النظام والأدوات</span></span>
-          <button type="button" class="btn-mobile-primary" id="repairSystemBtn" style="padding:4px 10px; font-size:11px;"><i class="fas fa-wrench"></i> <span>إصلاح الآن</span></button>
+          <button type="button" class="btn-mobile-primary" id="repairSystemBtn" style="padding:4px 12px; font-size:12px;">
+            <i class="fas fa-wrench"></i> <span>إصلاح الآن</span>
+          </button>
         </h4>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;" id="systemHealthGrid">
-          <div style="padding:8px; background:var(--bg-input); border-radius:8px; text-align:center;">
-            <span style="font-size:11px; color:var(--text-secondary); display:block;">محرك yt-dlp</span>
-            <strong id="ytDlpHealth" style="color:#22c55e; font-size:12px;"><i class="fas fa-check-circle"></i> جاهز ومحين</strong>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" id="systemHealthGrid">
+          <div style="padding:10px; background:var(--bg-input); border-radius:8px; text-align:center;">
+            <span style="font-size:12px; color:var(--text-secondary); display:block;">محرك yt-dlp</span>
+            <strong id="ytDlpHealth" style="color:#22c55e; font-size:13px;"><i class="fas fa-check-circle"></i> جاهز ومحين</strong>
           </div>
-          <div style="padding:8px; background:var(--bg-input); border-radius:8px; text-align:center;">
-            <span style="font-size:11px; color:var(--text-secondary); display:block;">محرك ffmpeg</span>
-            <strong id="ffmpegHealth" style="color:#22c55e; font-size:12px;"><i class="fas fa-check-circle"></i> جاهز وفعال</strong>
+          <div style="padding:10px; background:var(--bg-input); border-radius:8px; text-align:center;">
+            <span style="font-size:12px; color:var(--text-secondary); display:block;">محرك ffmpeg</span>
+            <strong id="ffmpegHealth" style="color:#22c55e; font-size:13px;"><i class="fas fa-check-circle"></i> جاهز وفعال</strong>
           </div>
         </div>
-      </div>
-
-      <!-- Factory Reset Button -->
-      <div style="margin-top:14px; text-align:center;">
-        <button type="button" class="btn-mobile-secondary" id="resetDefaultsBtn" style="width:100%; border-color:rgba(239,68,68,0.4); color:#ef4444;"><i class="fas fa-sync"></i> <span>إعادة ضبط الإعدادات الافتراضية</span></button>
       </div>
     </section>
   </main>
