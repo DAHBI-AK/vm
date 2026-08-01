@@ -1,0 +1,11 @@
+const path=require('path'); 
+const {spawn}=require('child_process'); 
+const ffmpegStatic=require('ffmpeg-static'); 
+const yt=path.join(__dirname,'..','bin','yt-dlp.exe'); 
+const url='https://www.youtube.com/watch?v=jNQXAC9IVRw'; 
+const args=[url,'--ffmpeg-location',ffmpegStatic,'--dump-single-json','--no-playlist','--no-warnings']; 
+const c=spawn(yt,args,{windowsHide:true}); 
+let o='',e=''; 
+c.stdout.on('data',d=>o+=d); 
+c.stderr.on('data',d=>e+=d); 
+c.on('close',code=>{console.log('code',code,'stdout',o.length,'stderr',e.length);if(code)console.log('USER_ERR',e.slice(0,600));else console.log('title',JSON.parse(o).title);}); 
