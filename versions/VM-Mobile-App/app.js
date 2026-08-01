@@ -58,6 +58,12 @@ const elements = {
   historyList: document.getElementById('historyList'),
   platformsGrid: document.getElementById('platformsGrid'),
   
+  // 3 Action Buttons Parity Elements
+  chooseFolderBtn: document.getElementById('chooseFolderBtn'),
+  openFolderBtn: document.getElementById('openFolderBtn'),
+  quickPlayBtn: document.getElementById('quickPlayBtn'),
+  playLastVideoBtn: document.getElementById('playLastVideoBtn'),
+  
   // Batch Queue Elements
   batchToggleBtn: document.getElementById('batchToggleBtn'),
   batchQueuePanel: document.getElementById('batchQueuePanel'),
@@ -112,6 +118,20 @@ async function handlePasteAndSearch() {
 }
 
 elements.pasteBtn?.addEventListener('click', handlePasteAndSearch);
+
+// Folder Location & Open Folder Action
+const handleFolderAction = async () => {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    alert('مكان وحافظة التحميلات: مجلد التحميلات المباشرة (Downloads)');
+  } catch (e) {
+    alert('مكان التحميل: مجلد التنزيلات المباشرة بالجهاز');
+  }
+};
+
+elements.chooseFolderBtn?.addEventListener('click', handleFolderAction);
+elements.openFolderBtn?.addEventListener('click', handleFolderAction);
 
 elements.clearBtn?.addEventListener('click', () => {
   elements.videoUrl.value = '';
@@ -232,11 +252,13 @@ elements.downloadBtn?.addEventListener('click', async () => {
 
     if (!res.ok || !data.success) throw new Error(data.error || 'تعذر التحميل');
 
+    let lastDownloadedPath = data.path || data.filename;
     elements.progressPercent.textContent = '100%';
     elements.progressFill.style.width = '100%';
     elements.progressContainer.classList.remove('show');
     elements.successMessage.classList.add('show');
-    elements.successPath.textContent = data.filename || 'تم التنزيل بنجاح';
+    elements.successPath.textContent = lastDownloadedPath;
+    elements.quickPlayBtn?.classList.remove('hidden');
 
     if (data.path) {
       const a = document.createElement('a');
@@ -244,6 +266,18 @@ elements.downloadBtn?.addEventListener('click', async () => {
       a.download = data.filename || 'video.mp4';
       a.click();
     }
+
+    // Attach Quick Play Action
+    const handlePlayAction = () => {
+      if (data.path) {
+        window.open(data.path, '_blank');
+      } else {
+        alert(`تشغيل الملف: ${lastDownloadedPath}`);
+      }
+    };
+
+    elements.quickPlayBtn?.addEventListener('click', handlePlayAction);
+    elements.playLastVideoBtn?.addEventListener('click', handlePlayAction);
 
     downloadHistory.unshift({ title: currentVideoInfo.title, date: new Date().toLocaleDateString('ar-SA') });
     localStorage.setItem('vm_mobile_history', JSON.stringify(downloadHistory));

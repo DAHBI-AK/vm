@@ -50,6 +50,9 @@
           <button type="button" class="btn-mobile-secondary" id="pasteBtn">
             <i class="fas fa-paste"></i> <span>لصق وبحث</span>
           </button>
+          <button type="button" class="btn-mobile-secondary" id="chooseFolderBtn">
+            <i class="fas fa-folder-open"></i> <span>مكان التحميل</span>
+          </button>
           <button type="button" class="btn-mobile-secondary" id="batchToggleBtn">
             <i class="fas fa-list-ol"></i> <span>سلسلة</span>
           </button>
@@ -140,9 +143,12 @@
           <input type="text" id="filenameInput" placeholder="اسم الملف...">
         </div>
 
-        <div class="mobile-download-btn-wrap">
-          <button type="button" class="btn-mobile-download" id="downloadBtn">
+        <div class="mobile-download-btn-wrap" style="display:flex; gap:8px;">
+          <button type="button" class="btn-mobile-download" id="downloadBtn" style="flex:2;">
             <i class="fas fa-download"></i> <span id="downloadBtnText">بدء التحميل المباشر</span>
+          </button>
+          <button type="button" class="btn-mobile-secondary hidden" id="quickPlayBtn" style="flex:1;">
+            <i class="fas fa-play"></i> <span>تشغيل الفيديو</span>
           </button>
         </div>
       </div>
@@ -162,7 +168,11 @@
         <i class="fas fa-check-circle success-icon"></i>
         <h3>تم التحميل بنجاح!</h3>
         <p id="successPath"></p>
-        <button type="button" class="btn-mobile-primary" id="newDownloadBtn"><i class="fas fa-plus"></i> <span>تحميل فيديو جديد</span></button>
+        <div style="display:flex; gap:8px; margin-top:12px;">
+          <button type="button" class="btn-mobile-primary" id="newDownloadBtn" style="flex:1;"><i class="fas fa-plus"></i> <span>تحميل فيديو جديد</span></button>
+          <button type="button" class="btn-mobile-secondary" id="openFolderBtn" style="flex:1;"><i class="fas fa-folder-open"></i> <span>فتح مكان الحفظ</span></button>
+          <button type="button" class="btn-mobile-secondary" id="playLastVideoBtn" style="flex:1;"><i class="fas fa-play"></i> <span>تشغيل الفيديو</span></button>
+        </div>
       </div>
     </section>
 
