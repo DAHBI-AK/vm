@@ -1,0 +1,24 @@
+{
+  "name": "VM Mobile Downloader",
+  "short_name": "VM Mobile",
+  "description": "تطبيق تحميل الفيديوهات المطور للجوال والأجهزة الذكية",
+  "start_url": "./src/renderer/index.html",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#00f2fe",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
