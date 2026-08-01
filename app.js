@@ -770,6 +770,45 @@ elements.settingsStartBatchBtn?.addEventListener('click', async () => {
   updateSettingsBatchQueue();
 });
 
+// Full i18n Multi-Language Translation Engine
+function applyLanguage(lang) {
+  const currentLang = lang || localStorage.getItem('vm_mobile_lang') || 'ar';
+  document.documentElement.lang = currentLang;
+  document.documentElement.dir = currentLang === 'ar' ? 'rtl' : 'ltr';
+
+  if (typeof translations === 'undefined' || !translations[currentLang]) return;
+
+  const t = translations[currentLang];
+
+  // Translate placeholders and text elements
+  if (elements.videoUrl && t.urlPlaceholder) elements.videoUrl.placeholder = t.urlPlaceholder;
+  if (elements.filenameInput && t.filenamePlaceholder) elements.filenameInput.placeholder = t.filenamePlaceholder;
+
+  // Translate navigation buttons
+  const navBtns = document.querySelectorAll('.nav-button span');
+  if (navBtns.length >= 4) {
+    if (t.navDownload) navBtns[0].textContent = t.navDownload;
+    if (t.navHistory) navBtns[1].textContent = t.navHistory;
+    if (t.navPlatforms) navBtns[2].textContent = t.navPlatforms;
+    if (t.navSettings) navBtns[3].textContent = t.navSettings;
+  }
+
+  // Update Global Settings Badge
+  updateGlobalSettingsBadge();
+}
+
+elements.languageSelect?.addEventListener('change', (e) => {
+  const newLang = e.target.value;
+  localStorage.setItem('vm_mobile_lang', newLang);
+  applyLanguage(newLang);
+  alert(newLang === 'ar' ? 'تم تغيير لغة التطبيق إلى العربية بنجاح' : (newLang === 'fr' ? 'Langue modifiée avec succès' : 'Language updated successfully'));
+});
+
+// Initialize Language on Startup
+const savedLang = localStorage.getItem('vm_mobile_lang') || 'ar';
+if (elements.languageSelect) elements.languageSelect.value = savedLang;
+applyLanguage(savedLang);
+
 elements.defaultQualitySelect?.addEventListener('change', (e) => {
   localStorage.setItem('vm_mobile_quality', e.target.value);
 });
