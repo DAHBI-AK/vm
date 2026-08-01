@@ -1,4 +1,48 @@
-// VIPD.SHOP — Real Web App Engine
+// VIPD.SHOP — Universal Web App Engine (Electron + Browser Compatible)
+const webApi = {
+  getVideoInfo: async (url) => {
+    const res = await fetch('/api/video-info', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'تعذر جلب معلومات الفيديو');
+    return data;
+  },
+  download: async (options) => {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'تعذر التحميل');
+    return data;
+  },
+  getAppStatus: async () => {
+    try {
+      const res = await fetch('/api/status');
+      return await res.json();
+    } catch {
+      return { ytDlp: true, ffmpeg: true, status: 'ready' };
+    }
+  },
+  getSupportedPlatforms: async () => [
+    'YouTube', 'TikTok', 'Instagram', 'Facebook', 'Twitter / X', 'Pinterest',
+    'Twitch', 'LinkedIn', 'Threads', 'Rumble', 'VK', 'Telegram', 'Bilibili',
+    'Vimeo', 'Dailymotion', 'Reddit', 'SoundCloud'
+  ],
+  selectDownloadFolder: async () => null,
+  openDownloadsFolder: async () => ({ success: true }),
+  showItemInFolder: async () => ({ success: true }),
+  onClipboardUrlDetected: () => {},
+  onDownloadProgress: () => {}
+};
+
+const api = window.electronAPI || webApi;
+
+// Load App UI
 let currentVideoInfo = null;
 let selectedHeight = 'best';
 let downloadType = 'video-audio';
@@ -132,20 +176,10 @@ async function fetchVideoInfo() {
   elements.videoCard.classList.remove('show');
   elements.studioPanel.classList.remove('show');
   elements.downloadOptions.classList.remove('show');
-  showStatus('جاري تحليل رابط الفيديو باستعمال yt-dlp Real Engine...', 'info');
+  showStatus('جاري تحليل رابط الفيديو...', 'info');
 
   try {
-    const response = await fetch('/api/video-info', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url })
-    });
-
-    const data = await response.json();
-    if (!response.ok || data.error) {
-      throw new Error(data.error || 'تعذر جلب معلومات الفيديو');
-    }
-
+    const data = await api.getVideoInfo(url);
     currentVideoInfo = data;
     elements.loadingState.classList.remove('show');
     displayVideoInfo(data);
@@ -171,7 +205,7 @@ function displayVideoInfo(info) {
   elements.studioPanel.classList.add('show');
   elements.downloadOptions.classList.add('show');
   renderQualityGrid(info.availableHeights || [1080, 720, 480]);
-  showStatus('تم جلب معلومات الفيديو الحقيقية بنجاح', 'success');
+  showStatus('تم جلب معلومات الفيديو بنجاح', 'success');
 }
 
 function renderQualityGrid(heights) {
@@ -193,7 +227,7 @@ function renderQualityGrid(heights) {
   });
 }
 
-// REAL Download action
+// Download action
 async function startDownload() {
   if (!currentVideoInfo) return;
 
@@ -204,7 +238,7 @@ async function startDownload() {
   let prog = 10;
   elements.progressPercent.textContent = '10%';
   elements.progressFill.style.width = '10%';
-  elements.progressInfo.textContent = 'جاري التحميل الحقيقي باستخدام yt-dlp & ffmpeg...';
+  elements.progressInfo.textContent = 'جاري التنزيل والمعالجة...';
 
   const progressTimer = setInterval(() => {
     if (prog < 90) {
@@ -215,37 +249,30 @@ async function startDownload() {
   }, 400);
 
   try {
-    const response = await fetch('/api/download', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: currentVideoInfo.url,
-        height: selectedHeight,
-        type: downloadType,
-        filename: elements.filenameInput.value
-      })
+    const data = await api.download({
+      url: currentVideoInfo.url,
+      height: selectedHeight,
+      type: downloadType,
+      filename: elements.filenameInput.value,
+      studioMode,
+      imageMode
     });
 
-    const data = await response.json();
     clearInterval(progressTimer);
-
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || 'تعذر التحميل');
-    }
-
     elements.progressPercent.textContent = '100%';
     elements.progressFill.style.width = '100%';
     elements.progressContainer.classList.remove('show');
     elements.successMessage.classList.add('show');
-    elements.successPath.textContent = data.filename;
+    elements.successPath.textContent = data.filename || data.path;
     elements.downloadBtn.disabled = false;
-    showStatus('تم التحميل الحقيقي بنجاح في VIPD.SHOP', 'success');
+    showStatus('تم التحميل بنجاح في VIPD.SHOP', 'success');
 
-    // Trigger Browser Download
-    const a = document.createElement('a');
-    a.href = data.path;
-    a.download = data.filename;
-    a.click();
+    if (data.path) {
+      const a = document.createElement('a');
+      a.href = data.path;
+      a.download = data.filename || 'video.mp4';
+      a.click();
+    }
 
     addToHistory({
       title: currentVideoInfo.title,
@@ -285,8 +312,8 @@ function updateHistoryUI() {
   `).join('');
 }
 
-function populatePlatforms() {
-  const platforms = ['YouTube', 'TikTok', 'Instagram', 'Facebook', 'Twitter / X', 'Pinterest', 'Twitch', 'Vimeo', 'SoundCloud', 'Reddit'];
+async function populatePlatforms() {
+  const platforms = await api.getSupportedPlatforms();
   elements.platformsGrid.innerHTML = platforms.map(p => `
     <div class="platform-card" style="padding:16px; background:var(--bg-card); border-radius:8px; text-align:center;">
       <i class="fas fa-check-circle" style="color:var(--primary); font-size:24px;"></i>
