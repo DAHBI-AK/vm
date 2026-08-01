@@ -1,0 +1,2 @@
+rootProject.name = "VM-Mobile-Downloader"
+include ':app'
