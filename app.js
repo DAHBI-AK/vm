@@ -23,6 +23,14 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
+// Mobile App State
+let currentVideoInfo = null;
+let selectedHeight = 'best';
+let downloadType = 'video-audio';
+let downloadHistory = JSON.parse(localStorage.getItem('vm_mobile_history') || '[]');
+let batchQueue = [];
+let isBatchProcessing = false;
+
 const elements = {
   videoUrl: document.getElementById('videoUrl'),
   fetchBtn: document.getElementById('fetchBtn'),
@@ -40,6 +48,7 @@ const elements = {
   unifiedQualityGrid: document.getElementById('unifiedQualityGrid'),
   filenameInput: document.getElementById('filenameInput'),
   downloadBtn: document.getElementById('downloadBtn'),
+  downloadBtnText: document.getElementById('downloadBtnText'),
   progressPercent: document.getElementById('progressPercent'),
   progressFill: document.getElementById('progressFill'),
   progressInfo: document.getElementById('progressInfo'),
@@ -47,7 +56,17 @@ const elements = {
   newDownloadBtn: document.getElementById('newDownloadBtn'),
   studioPanel: document.getElementById('studioPanel'),
   historyList: document.getElementById('historyList'),
-  platformsGrid: document.getElementById('platformsGrid')
+  platformsGrid: document.getElementById('platformsGrid'),
+  
+  // Batch Queue Elements
+  batchToggleBtn: document.getElementById('batchToggleBtn'),
+  batchQueuePanel: document.getElementById('batchQueuePanel'),
+  closeBatchBtn: document.getElementById('closeBatchBtn'),
+  batchUrlsText: document.getElementById('batchUrlsText'),
+  pasteAddBatchBtn: document.getElementById('pasteAddBatchBtn'),
+  startBatchBtn: document.getElementById('startBatchBtn'),
+  clearBatchBtn: document.getElementById('clearBatchBtn'),
+  batchQueueList: document.getElementById('batchQueueList')
 };
 
 // Bottom Navigation Tabs
@@ -66,27 +85,48 @@ document.querySelectorAll('.nav-button').forEach(btn => {
   });
 });
 
-// Clipboard Paste
-elements.pasteBtn?.addEventListener('click', async () => {
+// 1. Robust Clipboard Paste & Search Action
+async function handlePasteAndSearch() {
   try {
-    const text = await navigator.clipboard.readText();
+    let text = '';
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      text = await navigator.clipboard.readText();
+    }
+    if (!text || !text.trim()) {
+      text = prompt('ألصق رابط الفيديو هنا:');
+    }
     if (text && text.trim()) {
-      elements.videoUrl.value = text.trim();
+      const cleanUrl = text.trim().match(/https?:\/\/[^\s]+/i)?.[0] || text.trim();
+      elements.videoUrl.value = cleanUrl;
       fetchVideoInfo();
     }
   } catch (err) {
-    alert('ألصق الرابط يدوياً في الخانة');
+    elements.videoUrl.focus();
+    elements.videoUrl.select();
+    const manualUrl = prompt('ألصق رابط الفيديو هنا:');
+    if (manualUrl && manualUrl.trim()) {
+      elements.videoUrl.value = manualUrl.trim();
+      fetchVideoInfo();
+    }
   }
-});
+}
+
+elements.pasteBtn?.addEventListener('click', handlePasteAndSearch);
 
 elements.clearBtn?.addEventListener('click', () => {
   elements.videoUrl.value = '';
+  elements.videoCard?.classList.remove('show');
+  elements.studioPanel?.classList.remove('show');
+  elements.downloadOptions?.classList.remove('show');
 });
 
-// Fetch Video Info
+// 2. Fetch Video Info
 async function fetchVideoInfo() {
   const url = elements.videoUrl.value.trim();
-  if (!url) return;
+  if (!url) {
+    alert('الرجاء إدخال أو لصق رابط الفيديو أولاً');
+    return;
+  }
 
   elements.loadingState.classList.add('show');
   elements.videoCard.classList.remove('show');
@@ -100,23 +140,26 @@ async function fetchVideoInfo() {
       body: JSON.stringify({ url })
     });
     const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || 'تعذر جلب البيانات');
+    if (!res.ok || data.error) throw new Error(data.error || 'تعذر جلب بيانات الفيديو');
 
     currentVideoInfo = data;
     elements.loadingState.classList.remove('show');
     displayVideoInfo(data);
   } catch (err) {
     elements.loadingState.classList.remove('show');
-    alert(err.message);
+    alert(`خطأ: ${err.message}`);
   }
 }
 
 elements.fetchBtn?.addEventListener('click', fetchVideoInfo);
+elements.videoUrl?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') fetchVideoInfo();
+});
 
 function displayVideoInfo(info) {
-  elements.videoTitle.textContent = info.title;
-  elements.uploaderName.textContent = info.uploader;
-  elements.durationBadge.textContent = '03:15';
+  elements.videoTitle.textContent = info.title || 'فيديو بدون عنوان';
+  elements.uploaderName.textContent = info.uploader || 'VIPD Engine';
+  elements.durationBadge.textContent = info.duration ? formatDuration(info.duration) : '00:00';
   elements.thumbnailImg.src = info.thumbnail || 'assets/vm-icon.png';
   elements.filenameInput.value = (info.title || 'video').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 40);
 
@@ -126,11 +169,20 @@ function displayVideoInfo(info) {
   renderQualityGrid(info.availableHeights || [1080, 720, 480]);
 }
 
+function formatDuration(seconds) {
+  if (!seconds) return '00:00';
+  const sec = Math.floor(seconds);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 function renderQualityGrid(heights) {
   selectedHeight = heights[0] || 'best';
   elements.unifiedQualityGrid.innerHTML = heights.map((h, i) => `
     <div class="quality-card ${i === 0 ? 'active' : ''}" data-height="${h}">
       <strong>${h}p HD</strong>
+      <span style="font-size:11px; display:block; opacity:0.8;">جودة عالية</span>
     </div>
   `).join('');
 
@@ -143,7 +195,7 @@ function renderQualityGrid(heights) {
   });
 }
 
-// Download
+// 3. Download Action
 elements.downloadBtn?.addEventListener('click', async () => {
   if (!currentVideoInfo) return;
 
@@ -151,6 +203,10 @@ elements.downloadBtn?.addEventListener('click', async () => {
   elements.progressContainer.classList.add('show');
 
   let prog = 10;
+  elements.progressPercent.textContent = '10%';
+  elements.progressFill.style.width = '10%';
+  elements.progressInfo.textContent = 'جاري المعالجة والتنزيل...';
+
   const timer = setInterval(() => {
     if (prog < 90) {
       prog += 10;
@@ -174,11 +230,13 @@ elements.downloadBtn?.addEventListener('click', async () => {
     const data = await res.json();
     clearInterval(timer);
 
+    if (!res.ok || !data.success) throw new Error(data.error || 'تعذر التحميل');
+
     elements.progressPercent.textContent = '100%';
     elements.progressFill.style.width = '100%';
     elements.progressContainer.classList.remove('show');
     elements.successMessage.classList.add('show');
-    elements.successPath.textContent = data.filename || 'تم حفظ الفيديو في تنزيلات الجوال';
+    elements.successPath.textContent = data.filename || 'تم التنزيل بنجاح';
 
     if (data.path) {
       const a = document.createElement('a');
@@ -201,7 +259,113 @@ elements.newDownloadBtn?.addEventListener('click', () => {
   elements.videoUrl.value = '';
 });
 
+// 4. BATCH QUEUE FEATURE (سلسلة روابط بدون قيود)
+elements.batchToggleBtn?.addEventListener('click', () => {
+  elements.batchQueuePanel.classList.toggle('hidden');
+});
+
+elements.closeBatchBtn?.addEventListener('click', () => {
+  elements.batchQueuePanel.classList.add('hidden');
+});
+
+// Paste & Add to Batch
+elements.pasteAddBatchBtn?.addEventListener('click', async () => {
+  try {
+    let text = '';
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      text = await navigator.clipboard.readText();
+    }
+    if (!text || !text.trim()) {
+      text = prompt('ألصق الروابط هنا (رابط في كل سطر):');
+    }
+    if (text && text.trim()) {
+      const existing = elements.batchUrlsText.value ? elements.batchUrlsText.value + '\n' : '';
+      elements.batchUrlsText.value = existing + text.trim();
+      updateBatchQueueFromText();
+    }
+  } catch (err) {
+    const text = prompt('ألصق الروابط هنا (رابط في كل سطر):');
+    if (text && text.trim()) {
+      const existing = elements.batchUrlsText.value ? elements.batchUrlsText.value + '\n' : '';
+      elements.batchUrlsText.value = existing + text.trim();
+      updateBatchQueueFromText();
+    }
+  }
+});
+
+elements.batchUrlsText?.addEventListener('input', updateBatchQueueFromText);
+
+function updateBatchQueueFromText() {
+  const lines = elements.batchUrlsText.value.split('\n').map(l => l.trim()).filter(l => /^https?:\/\//i.test(l));
+  batchQueue = [...new Set(lines)];
+  renderBatchQueueList();
+  if (elements.startBatchBtn) {
+    elements.startBatchBtn.disabled = batchQueue.length === 0;
+  }
+}
+
+function renderBatchQueueList() {
+  if (!elements.batchQueueList) return;
+  if (batchQueue.length === 0) {
+    elements.batchQueueList.innerHTML = `<p style="font-size:12px; color:var(--text-secondary); text-align:center; padding:8px;">لا توجد روابط في السلسلة</p>`;
+    return;
+  }
+
+  elements.batchQueueList.innerHTML = batchQueue.map((url, idx) => `
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--bg-input); border-radius:8px; margin-bottom:6px; font-size:12px;">
+      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">${idx + 1}. ${url}</span>
+      <button type="button" onclick="removeBatchItem(${idx})" style="background:none; border:none; color:#ef4444; font-size:14px; cursor:pointer;"><i class="fas fa-trash"></i></button>
+    </div>
+  `).join('');
+}
+
+window.removeBatchItem = function(index) {
+  batchQueue.splice(index, 1);
+  elements.batchUrlsText.value = batchQueue.join('\n');
+  updateBatchQueueFromText();
+};
+
+// Start Batch Downloads
+elements.startBatchBtn?.addEventListener('click', async () => {
+  if (batchQueue.length === 0 || isBatchProcessing) return;
+
+  isBatchProcessing = true;
+  elements.startBatchBtn.disabled = true;
+  elements.progressContainer.classList.add('show');
+
+  const total = batchQueue.length;
+  let completed = 0;
+
+  for (let i = 0; i < total; i++) {
+    const url = batchQueue[i];
+    elements.progressInfo.textContent = `جاري تحميل الفيديو (${i + 1}/${total}): ${url.substring(0, 30)}...`;
+    const pct = Math.round(((i + 1) / total) * 100);
+    elements.progressPercent.textContent = `${pct}%`;
+    elements.progressFill.style.width = `${pct}%`;
+
+    try {
+      const res = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, type: 'video-audio', height: 'best' })
+      });
+      const data = await res.json();
+      if (data.success) completed++;
+    } catch (err) {
+      console.warn(`Batch download error for ${url}:`, err);
+    }
+  }
+
+  isBatchProcessing = false;
+  elements.progressContainer.classList.remove('show');
+  alert(`اكتمل تحميل السلسلة بنجاح (${completed}/${total})`);
+  batchQueue = [];
+  elements.batchUrlsText.value = '';
+  updateBatchQueueFromText();
+});
+
 function updateHistoryUI() {
+  if (!elements.historyList) return;
   if (downloadHistory.length === 0) {
     elements.historyList.innerHTML = `<p style="text-align:center; padding:20px; color:var(--text-secondary);">لا يوجد سجل تحميلات</p>`;
     return;
@@ -215,6 +379,7 @@ function updateHistoryUI() {
 }
 
 function populatePlatforms() {
+  if (!elements.platformsGrid) return;
   const platforms = ['YouTube', 'TikTok', 'Instagram', 'Facebook', 'Twitter / X', 'Pinterest', 'Twitch', 'Vimeo', 'SoundCloud', 'Reddit'];
   elements.platformsGrid.innerHTML = platforms.map(p => `
     <div style="padding:14px; background:var(--bg-card); border-radius:12px; text-align:center; margin-bottom:10px;">
