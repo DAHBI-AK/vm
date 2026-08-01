@@ -1,23 +1,28 @@
-const express = require('express');
-const path = require('path');
+const http = require('http');
 const fs = require('fs');
+const path = require('path');
 const { spawn } = require('child_process');
-const open = require('open');
 
-const app = express();
 const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-app.use(express.static(path.join(__dirname)));
-app.use('/downloads', express.static(path.join(__dirname, 'downloads')));
-
+const downloadsDir = path.join(__dirname, 'downloads');
 const ytDlpPath = path.join(__dirname, 'bin', 'yt-dlp.exe');
 const ffmpegStatic = require('ffmpeg-static');
-const downloadsDir = path.join(__dirname, 'downloads');
 
 if (!fs.existsSync(downloadsDir)) {
   fs.mkdirSync(downloadsDir, { recursive: true });
 }
+
+const MIME_TYPES = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.ico': 'image/x-icon',
+  '.mp4': 'video/mp4',
+  '.mp3': 'audio/mpeg'
+};
 
 function getYtDlpBaseArgs(url = '') {
   const args = ['--no-update', '--no-warnings', '--no-check-certificates', '--geo-bypass'];
@@ -57,95 +62,143 @@ function parseFormats(formats = []) {
   };
 }
 
-// REAL Video Info Endpoint
-app.post('/api/video-info', async (req, res) => {
-  try {
-    const { url } = req.body;
-    if (!url) return res.status(400).json({ error: 'الرابط مطلوب' });
+const server = http.createServer((req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    const args = [...getYtDlpBaseArgs(url), '--dump-single-json', '--no-playlist', url];
-    const rawOutput = await runYtDlp(args);
-    const info = JSON.parse(rawOutput);
-
-    const parsed = parseFormats(info.formats || []);
-    res.json({
-      title: info.title || 'فيديو بدون عنوان',
-      uploader: info.uploader || info.channel || 'VIPD.SHOP Engine',
-      duration: info.duration || 0,
-      thumbnail: info.thumbnail || '',
-      description: info.description || '',
-      url: url,
-      availableHeights: parsed.availableHeights,
-      formats: parsed.rawFormats
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message || 'تعذر جلب معلومات الفيديو' });
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    return res.end();
   }
-});
 
-// REAL Download Endpoint
-app.post('/api/download', async (req, res) => {
-  try {
-    const { url, height = 'best', type = 'video-audio', filename, clipStart, clipEnd, format = 'mp4' } = req.body;
-    if (!url) return res.status(400).json({ error: 'الرابط مطلوب' });
+  const reqUrl = req.url.split('?')[0];
 
-    const timestamp = Date.now();
-    const safeName = (filename || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
-    const outFilename = `${safeName}_${timestamp}.${type === 'audio' ? 'mp3' : format}`;
-    const outPath = path.join(downloadsDir, outFilename);
+  // API Endpoints
+  if (req.method === 'POST' && reqUrl === '/api/video-info') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { url } = JSON.parse(body || '{}');
+        if (!url) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          return res.end(JSON.stringify({ error: 'الرابط مطلوب' }));
+        }
 
-    let formatSelector = 'bestvideo+bestaudio/best';
-    if (type === 'audio') {
-      formatSelector = 'bestaudio/best';
-    } else if (height && height !== 'best') {
-      formatSelector = `bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`;
-    }
+        const args = [...getYtDlpBaseArgs(url), '--dump-single-json', '--no-playlist', url];
+        const rawOutput = await runYtDlp(args);
+        const info = JSON.parse(rawOutput);
 
-    const args = [
-      ...getYtDlpBaseArgs(url),
-      '-f', formatSelector,
-      '--merge-output-format', type === 'audio' ? 'mp3' : 'mp4',
-      '-o', outPath,
-      url
-    ];
-
-    if (type === 'audio') {
-      args.push('-x', '--audio-format', 'mp3');
-    }
-
-    await runYtDlp(args);
-
-    const downloadUrl = `/downloads/${outFilename}`;
-    res.json({
-      success: true,
-      filename: outFilename,
-      path: downloadUrl,
-      fullPath: outPath
+        const parsed = parseFormats(info.formats || []);
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          title: info.title || 'فيديو بدون عنوان',
+          uploader: info.uploader || info.channel || 'VIPD.SHOP Engine',
+          duration: info.duration || 0,
+          thumbnail: info.thumbnail || '',
+          description: info.description || '',
+          url: url,
+          availableHeights: parsed.availableHeights,
+          formats: parsed.rawFormats
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: err.message || 'تعذر جلب معلومات الفيديو' }));
+      }
     });
-  } catch (err) {
-    res.status(500).json({ error: err.message || 'تعذر التحميل' });
+    return;
   }
-});
 
-// App Health
-app.get('/api/status', (req, res) => {
-  res.json({
-    ytDlp: fs.existsSync(ytDlpPath),
-    ffmpeg: !!ffmpegStatic && fs.existsSync(ffmpegStatic),
-    status: 'ready'
+  if (req.method === 'POST' && reqUrl === '/api/download') {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', async () => {
+      try {
+        const { url, height = 'best', type = 'video-audio', filename, clipStart, clipEnd, studioMode = 'full', imageMode = 'thumbnail', audioEnhance = false, format = 'mp4' } = JSON.parse(body || '{}');
+        if (!url) {
+          res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8' });
+          return res.end(JSON.stringify({ error: 'الرابط مطلوب' }));
+        }
+
+        const timestamp = Date.now();
+        const safeName = (filename || 'video').replace(/[^a-zA-Z0-9_-]/g, '_');
+        let extName = type === 'audio' ? 'mp3' : format;
+        if (studioMode === 'image') extName = 'jpg';
+
+        const outFilename = `${safeName}_${timestamp}.${extName}`;
+        const outPath = path.join(downloadsDir, outFilename);
+
+        let formatSelector = 'bestvideo+bestaudio/best';
+        if (type === 'audio') {
+          formatSelector = 'bestaudio/best';
+        } else if (height && height !== 'best') {
+          formatSelector = `bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`;
+        }
+
+        const args = [...getYtDlpBaseArgs(url)];
+
+        if (studioMode === 'image' && imageMode === 'thumbnail') {
+          args.push('--write-thumbnail', '--skip-download', '--convert-thumbnails', 'jpg', '-o', outPath.replace(/\.jpg$/, ''));
+        } else if (studioMode === 'clip' && clipStart !== undefined && clipEnd !== undefined) {
+          args.push('-f', formatSelector, '--download-sections', `*${clipStart}-${clipEnd}`, '-o', outPath);
+        } else {
+          args.push('-f', formatSelector, '-o', outPath);
+          if (type === 'audio') {
+            args.push('-x', '--audio-format', 'mp3');
+          }
+        }
+
+        await runYtDlp(args);
+
+        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({
+          success: true,
+          filename: outFilename,
+          path: `/downloads/${outFilename}`,
+          fullPath: outPath
+        }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: err.message || 'تعذر التحميل' }));
+      }
+    });
+    return;
+  }
+
+  if (req.method === 'GET' && reqUrl === '/api/status') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    return res.end(JSON.stringify({
+      ytDlp: fs.existsSync(ytDlpPath),
+      ffmpeg: !!ffmpegStatic && fs.existsSync(ffmpegStatic),
+      status: 'ready'
+    }));
+  }
+
+  // Static File Serving
+  let filePath = path.join(__dirname, reqUrl === '/' ? 'index.html' : reqUrl);
+  if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+    filePath = path.join(__dirname, 'index.html');
+  }
+
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+
+  fs.readFile(filePath, (err, content) => {
+    if (err) {
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('File not found');
+    } else {
+      res.writeHead(200, { 'Content-Type': contentType });
+      res.end(content);
+    }
   });
 });
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   const url = `http://localhost:${PORT}`;
   console.log(`\n==========================================`);
-  console.log(` VIPD.SHOP Real Web Downloader is Running!`);
+  console.log(` VIPD.SHOP Web Downloader is Running!`);
   console.log(` Access at: ${url}`);
   console.log(`==========================================\n`);
-  
-  try {
-    open(url);
-  } catch (err) {
-    // ignore
-  }
 });
