@@ -2239,6 +2239,159 @@ html[dir='ltr'] .filename-input {
   color: var(--primary-light);
 }
 
+/* Batch Header Actions (auto-paste + close) */
+.batch-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Auto-Paste Toggle Button */
+.btn-auto-paste-toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px 5px 8px;
+  border-radius: 20px;
+  border: 1.5px solid rgba(99, 102, 241, 0.35);
+  background: rgba(99, 102, 241, 0.08);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.btn-auto-paste-toggle:hover {
+  border-color: rgba(99, 102, 241, 0.6);
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+
+/* Active state (ON) */
+.btn-auto-paste-toggle.active {
+  border-color: #34d399;
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+  box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.15), 0 2px 8px rgba(52, 211, 153, 0.2);
+  animation: autoPasteGlow 2s ease-in-out infinite;
+}
+
+@keyframes autoPasteGlow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.15), 0 2px 8px rgba(52, 211, 153, 0.2); }
+  50%       { box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.25), 0 4px 14px rgba(52, 211, 153, 0.35); }
+}
+
+/* Icon wrapper with live indicator dot */
+.auto-paste-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.auto-paste-icon-wrap i {
+  font-size: 14px;
+  transition: color 0.25s ease;
+}
+
+/* Live dot (hidden by default, visible when active) */
+.auto-paste-dot {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b7280;
+  border: 1.5px solid rgba(15, 23, 42, 0.9);
+  transition: background 0.25s ease;
+}
+
+.btn-auto-paste-toggle.active .auto-paste-dot {
+  background: #34d399;
+  animation: dotPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%       { transform: scale(1.35); opacity: 0.75; }
+}
+
+/* Label text */
+.auto-paste-label {
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+}
+
+/* ON/OFF status badge */
+.auto-paste-status-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  background: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.25);
+  transition: all 0.25s ease;
+}
+
+.btn-auto-paste-toggle.active .auto-paste-status-badge {
+  background: rgba(52, 211, 153, 0.18);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+/* Notification toast for auto-paste */
+.auto-paste-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(30, 41, 59, 0.97));
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  border-radius: 12px;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #e2e8f0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+  white-space: nowrap;
+  max-width: calc(100vw - 40px);
+}
+
+.auto-paste-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.auto-paste-toast i {
+  color: #34d399;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.auto-paste-toast .toast-url {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
 .btn-close-batch {
   background: none;
   border: none;
@@ -2246,6 +2399,7 @@ html[dir='ltr'] .filename-input {
   font-size: 16px;
   cursor: pointer;
 }
+
 
 .batch-desc {
   font-size: 13px;
@@ -2324,19 +2478,271 @@ html[dir='ltr'] .filename-input {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 220px;
+  max-height: 420px;
   overflow-y: auto;
+}
+
+.batch-queue-summary {
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--primary-light);
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.batch-queue-hint {
+  font-size: 11px;
+  opacity: 0.8;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.batch-selection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.batch-select-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-selected-count {
+  font-size: 12px;
+  color: var(--primary-light);
+  font-weight: 600;
+  min-width: 70px;
+}
+
+.batch-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline-start: auto;
+  flex-wrap: wrap;
+}
+
+.btn-batch-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+
+.btn-batch-tool:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary-light);
+}
+
+.btn-batch-tool:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-batch-tool-edit {
+  border-color: rgba(99, 102, 241, 0.45);
+  color: #a5b4fc;
+}
+
+.btn-batch-tool-danger {
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.batch-bulk-editor {
+  margin: 4px 0 8px;
+  padding: 12px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.batch-bulk-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--primary-light);
+  font-size: 13px;
+}
+
+.batch-bulk-hint {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.batch-bulk-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.batch-bulk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.batch-bulk-field-wide {
+  grid-column: 1 / -1;
+}
+
+.batch-bulk-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+}
+
+.batch-bulk-field select,
+.batch-bulk-field input[type="text"],
+.batch-editor-input {
+  width: 100%;
+  padding: 6px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 12px;
+}
+
+.batch-bulk-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-batch-apply-bulk,
+.btn-batch-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--primary);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
 }
 
 .batch-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 14px;
+  gap: 10px;
+  padding: 8px 10px;
   background: var(--bg-dark);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-size: 13px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.batch-item.selected,
+.batch-item-wrapper.selected > .batch-item {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.batch-item-wrapper.is-next > .batch-item {
+  border-color: rgba(34, 197, 94, 0.55);
+  box-shadow: inset 3px 0 0 #22c55e;
+}
+
+.batch-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.batch-item-check {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.batch-reorder-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.btn-batch-reorder {
+  width: 22px;
+  height: 16px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.8);
+  color: var(--text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.btn-batch-reorder:hover:not(:disabled) {
+  color: var(--primary-light);
+  border-color: var(--primary);
+}
+
+.btn-batch-reorder:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.batch-item-num {
+  font-weight: 700;
+  color: var(--primary);
+  font-size: 12px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  min-width: 28px;
+}
+
+.batch-item-num small {
+  font-size: 9px;
+  color: #22c55e;
+  font-weight: 700;
 }
 
 .batch-item-url {
@@ -2345,7 +2751,14 @@ html[dir='ltr'] .filename-input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 70%;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 0;
+  flex: 1;
+}
+
+.batch-item-badge {
+  color: var(--primary);
 }
 
 .batch-item-status {
@@ -2549,4 +2962,133 @@ html[dir='ltr'] .filename-input {
   font-family: inherit;
   font-size: 14px;
 }
+
+/* Batch Queue Mini Buttons & Editor */
+.batch-item-wrapper {
+  margin-bottom: 8px;
+}
+
+.batch-item-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-batch-mini-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(165, 180, 252, 0.35);
+  border-radius: 6px;
+  color: #c7d2fe;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-batch-mini-edit:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.45);
+  color: #ffffff;
+  border-color: #818cf8;
+  transform: translateY(-1px);
+}
+
+.btn-batch-mini-edit:disabled,
+.btn-batch-mini-delete:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-batch-mini-delete {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-batch-mini-delete:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.35);
+  color: #ffffff;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+}
+
+.batch-item-editor {
+  margin-top: 6px;
+  padding: 14px;
+  background: rgba(11, 15, 25, 0.95);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  animation: fadeIn 0.2s ease;
+}
+
+.batch-item-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--primary-light);
+}
+
+.btn-batch-icon {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.batch-editor-label {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-secondary);
+}
+
+.batch-editor-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.batch-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .batch-bulk-grid,
+  .batch-editor-row {
+    grid-template-columns: 1fr;
+  }
+
+  .batch-item {
+    flex-wrap: wrap;
+  }
+
+  .batch-toolbar-actions {
+    margin-inline-start: 0;
+    width: 100%;
+  }
+}
+
 

@@ -69,11 +69,11 @@
       <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px;">
         <button class="btn-open-downloads" id="chooseDownloadFolderBtn" title="اختيار مسار التحميل">
           <i class="fas fa-folder-plus"></i>
-          <span>اختيار المسار</span>
+          <span data-i18n="chooseDownloadPath">اختيار المسار</span>
         </button>
         <button class="btn-open-downloads" id="openLastDownloadSidebarBtn" title="فتح مجلد مسار آخر فيديو">
           <i class="fas fa-folder-open"></i>
-          <span>فتح مجلد آخر فيديو</span>
+          <span data-i18n="openLastFolder">فتح مجلد آخر فيديو</span>
         </button>
       </div>
     </aside>
@@ -156,9 +156,20 @@
           <div class="batch-queue-panel hidden" id="batchQueuePanel">
             <div class="batch-panel-header">
               <h4><i class="fas fa-layer-group"></i> <span data-i18n="batchTitle">تحميل سلسلة روابط متتالية تلقائياً</span></h4>
-              <button type="button" class="btn-close-batch" id="closeBatchBtn"><i class="fas fa-times"></i></button>
+              <div class="batch-header-actions">
+                <!-- Auto-Paste Toggle Button -->
+                <button type="button" class="btn-auto-paste-toggle" id="autoPasteBatchBtn" title="لصق تلقائي — بعد التفعيل فقط: أي رابط تنسخه يُضاف فوراً للقائمة">
+                  <span class="auto-paste-icon-wrap">
+                    <i class="fas fa-clipboard-check" id="autoPasteIcon"></i>
+                    <span class="auto-paste-dot" id="autoPasteDot"></span>
+                  </span>
+                  <span class="auto-paste-label" id="autoPasteLabel">لصق تلقائي</span>
+                  <span class="auto-paste-status-badge" id="autoPasteStatusBadge">OFF</span>
+                </button>
+                <button type="button" class="btn-close-batch" id="closeBatchBtn"><i class="fas fa-times"></i></button>
+              </div>
             </div>
-            <p class="batch-desc" data-i18n="batchDesc">ألصق عدة روابط متتالية (رابط في كل سطر). وسيتم تنزيل كل رابط تلقائياً بعد اكتمال السابق بنص الإعدادات:</p>
+            <p class="batch-desc" data-i18n="batchDesc">ألصق عدة روابط متتالية (رابط في كل سطر). يمكنك تحديد الروابط وترتيبها وتعديل إعدادات رابط واحد أو عدة روابط قبل بدء التحميل:</p>
             <textarea id="batchUrlsText" placeholder="https://www.youtube.com/watch?v=...\nhttps://www.youtube.com/watch?v=..." rows="4" spellcheck="false"></textarea>
             <div class="batch-actions">
               <button type="button" class="btn-paste-add-batch" id="pasteAddBatchBtn">
@@ -176,6 +187,7 @@
             </div>
             <div class="batch-queue-list" id="batchQueueList"></div>
           </div>
+
 
           <div class="platform-tags">
             <span class="tag"><i class="fab fa-youtube"></i> YouTube</span>
@@ -260,10 +272,7 @@
               <i class="fas fa-image"></i>
               <span data-i18n="modeImage">صورة</span>
             </button>
-            <button type="button" class="studio-tab" data-mode="dub">
-              <i class="fas fa-language"></i>
-              <span data-i18n="modeDub">ترجمة ودبلجة</span>
-            </button>
+
           </div>
 
           <div class="studio-workspace studio-clip-workspace" id="clipWorkspace">
@@ -282,15 +291,55 @@
               </div>
             </div>
 
-            <div class="timeline-ruler" id="timelineRuler"></div>
+            <!-- Interactive Frame Screen & Clip Player (شاشة معاينة الفريم الفورية لقص المقطع) -->
+            <div class="clip-frame-preview-box" id="clipFramePreviewBox" style="width:100%; background:#000; border-radius:12px; overflow:hidden; margin-bottom:14px; border:1px solid rgba(99,102,241,0.3); box-shadow:0 8px 24px rgba(0,0,0,0.5); position:relative;">
+              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); padding:8px 14px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                <span style="font-size:12px; color:var(--primary-light); font-weight:bold; display:flex; align-items:center; gap:6px;">
+                  <i class="fas fa-crosshairs" style="color:#6366f1;"></i>
+                  <span>شاشة الفريم المعاين لقص المقطع (Frame Cut Preview)</span>
+                </span>
+                <span id="clipCurrentFrameBadge" style="font-size:11px; background:rgba(99,102,241,0.2); color:#a5b4fc; padding:3px 10px; border-radius:10px; font-weight:bold; font-family:monospace;">
+                  00:00:00 (الفريم الحالي)
+                </span>
+              </div>
+              
+              <div style="width:100%; min-height:220px; max-height:360px; display:flex; align-items:center; justify-content:center; background:#000; position:relative;">
+                <div id="clipFrameBadgeOverlay" style="position:absolute; top:10px; right:10px; background:rgba(15,23,42,0.9); color:#34d399; border:1px solid #10b981; padding:5px 12px; border-radius:20px; font-weight:bold; font-size:12px; z-index:10; backdrop-filter:blur(6px); display:none;">
+                  <i class="fas fa-eye"></i> فريم بداية القص: 00:00:00
+                </div>
+                <video id="clipVideoPlayer" controls playsinline style="width:100%; max-height:340px; display:none; object-fit:contain;"></video>
+                <img id="clipFrameImg" src="" style="width:100%; max-height:340px; display:none; object-fit:contain;" alt="إطار القص">
+                <div id="clipPlayerPlaceholder" style="color:var(--text-secondary); text-align:center; padding:24px;">
+                  <i class="fas fa-film" style="font-size:36px; color:var(--primary); margin-bottom:8px; display:block;"></i>
+                  <p style="font-size:13px; margin:0;">اختر فيديو وسحب شريط القص لمعاينة الفريم والدقيقة فورياً هنا</p>
+                </div>
+              </div>
 
-            <div class="timeline-track-wrap">
+              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); padding:8px 14px; border-top:1px solid rgba(255,255,255,0.08); flex-wrap:wrap; gap:8px;">
+                <div style="display:flex; gap:8px;">
+                  <button type="button" class="btn-browse" id="clipPreviewStartBtn" style="font-size:12px; padding:6px 12px; background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.4);" title="معاينة فريم البداية">
+                    <i class="fas fa-step-backward"></i> فريم البداية
+                  </button>
+                  <button type="button" class="btn-browse" id="clipPlayTrimmedBtn" style="font-size:12px; padding:6px 12px; background:linear-gradient(135deg,#10b981,#059669); color:#fff;" title="تشغيل ومعاينة المقطع المحدد فقط">
+                    <i class="fas fa-play"></i> تشغيل المقطع قصاً
+                  </button>
+                  <button type="button" class="btn-browse" id="clipPreviewEndBtn" style="font-size:12px; padding:6px 12px; background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.4);" title="معاينة فريم النهاية">
+                    <i class="fas fa-step-forward"></i> فريم النهاية
+                  </button>
+                </div>
+                <span style="font-size:11px; color:var(--text-secondary);">حرّك مقبض البداية أو النهاية أو انقر على شريط الفيديو لتغيير الفريم المباشر</span>
+              </div>
+            </div>
+
+            <div class="timeline-ruler" id="timelineRuler" style="direction: ltr;"></div>
+
+            <div class="timeline-track-wrap" style="direction: ltr;">
               <div class="timeline-track" id="timelineTrack">
                 <div class="timeline-wave" id="timelineWave"></div>
                 <div class="timeline-selection" id="timelineSelection"></div>
               </div>
-              <input type="range" class="timeline-handle timeline-start" id="clipStartRange" min="0" max="100" value="0" step="0.1">
-              <input type="range" class="timeline-handle timeline-end" id="clipEndRange" min="0" max="100" value="10" step="0.1">
+              <input type="range" class="timeline-handle timeline-start" id="clipStartRange" min="0" max="100" value="0" step="0.1" style="direction: ltr;">
+              <input type="range" class="timeline-handle timeline-end" id="clipEndRange" min="0" max="100" value="10" step="0.1" style="direction: ltr;">
             </div>
 
             <div class="timeline-controls">
@@ -337,107 +386,138 @@
               </button>
             </div>
 
-            <div class="frame-controls" id="frameControls">
-              <div class="frame-preview">
-                <img id="framePreviewImg" src="" data-i18n-alt="framePreview" alt="معاينة اللقطة">
-                <span class="frame-time-badge" id="frameTimeBadge">00:00:00</span>
+            <!-- 1. Original Thumbnail Preview Box (معاينة غلاف/الصورة المصغرة الأصلية) -->
+            <div class="thumbnail-preview-box" id="thumbnailPreviewBox" style="width:100%; max-height:280px; border-radius:12px; overflow:hidden; border:1px solid rgba(99,102,241,0.3); background:#000; margin-bottom:14px; text-align:center; position:relative; transition: all 0.3s ease;">
+              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.08);">
+                <span style="font-size:12px; color:var(--primary-light); font-weight:bold;"><i class="fas fa-image"></i> معاينة غلاف / الصورة المصغرة الأصلية للفيديو</span>
+                
+                <!-- Zoom & Fullscreen Toolbar for Thumbnail -->
+                <div class="preview-toolbar" style="display:flex; gap:6px; align-items:center;">
+                  <button type="button" id="thumbZoomInBtn" title="تكبير الصورة" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-search-plus"></i></button>
+                  <button type="button" id="thumbZoomOutBtn" title="تصغير الصورة" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-search-minus"></i></button>
+                  <button type="button" id="thumbZoomResetBtn" title="إعادة الضبط" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-undo"></i></button>
+                  <button type="button" id="thumbFullscreenBtn" title="ملء الشاشة" style="background:rgba(99,102,241,0.3); border:1px solid rgba(99,102,241,0.5); color:#a5b4fc; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;"><i class="fas fa-expand-arrows-alt"></i> ملء الشاشة</button>
+                </div>
               </div>
-              <div class="frame-slider-wrap">
-                <label for="frameTimeRange" data-i18n="frameTime">اختر وقت اللقطة</label>
-                <input type="range" id="frameTimeRange" min="0" max="100" value="0" step="0.1">
-                <input type="text" id="frameTimeInput" value="00:00:00" spellcheck="false">
+
+              <div id="thumbImgContainer" style="width:100%; min-height:160px; max-height:240px; display:flex; align-items:center; justify-content:center; background:#000; position:relative; overflow:hidden;">
+                <img id="thumbnailPreviewImg" src="" style="width:100%; max-height:230px; object-fit:contain; display:block; transition: transform 0.2s ease;" alt="غلاف الفيديو">
+                
+                <!-- Interactive Draggable Crop Selection Frame for Thumbnail -->
+                <div id="thumbCropFrame" style="display:none; position:absolute; width:60%; height:60%; border:2px dashed #34d399; background:rgba(52,211,153,0.15); box-shadow:0 0 0 9999px rgba(0,0,0,0.5); cursor:move; top:20%; left:20%; border-radius:4px; z-index:10;">
+                  <span style="position:absolute; top:4px; right:6px; font-size:10px; background:rgba(0,0,0,0.7); color:#34d399; padding:2px 6px; border-radius:4px; font-weight:bold; pointer-events:none;">✂️ اسحب لتحديد منطقة القطع</span>
+                </div>
               </div>
             </div>
 
+            <!-- 2. Video Frame Extraction Controls (استخراج لقطة وفريم من الوقت المحدد) -->
+            <div class="frame-controls" id="frameControls" style="display:none;">
+              <div class="frame-preview" style="position:relative; width:100%; background:#000; border-radius:10px; overflow:hidden; margin-bottom:12px; transition: all 0.3s ease;">
+                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.08); position:relative; z-index:20;">
+                  <span style="font-size:12px; color:var(--primary-light); font-weight:bold;"><i class="fas fa-camera"></i> معاينة لقطة الفريم المختار</span>
+                  
+                  <!-- Zoom & Fullscreen Toolbar for Frame -->
+                  <div class="preview-toolbar" style="display:flex; gap:6px; align-items:center;">
+                    <button type="button" id="frameZoomInBtn" title="تكبير اللقطة" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-search-plus"></i></button>
+                    <button type="button" id="frameZoomOutBtn" title="تصغير اللقطة" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-search-minus"></i></button>
+                    <button type="button" id="frameZoomResetBtn" title="إعادة الضبط" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-undo"></i></button>
+                    <button type="button" id="frameFullscreenBtn" title="ملء الشاشة" style="background:rgba(99,102,241,0.3); border:1px solid rgba(99,102,241,0.5); color:#a5b4fc; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;"><i class="fas fa-expand-arrows-alt"></i> ملء الشاشة</button>
+                  </div>
+                </div>
+
+                <div id="frameImgContainer" style="width:100%; min-height:160px; max-height:280px; display:flex; align-items:center; justify-content:center; background:#000; position:relative; overflow:hidden;">
+                  <video id="frameVideoPlayer" controls playsinline style="width:100%; max-height:280px; display:none; object-fit:contain; transition: transform 0.2s ease;"></video>
+                  <img id="framePreviewImg" src="" data-i18n-alt="framePreview" alt="معاينة اللقطة" style="width:100%; max-height:280px; object-fit:contain; display:block; transition: transform 0.2s ease;">
+                  
+                  <!-- Interactive Draggable Crop Selection Frame for Video Frame -->
+                  <div id="frameCropFrame" style="display:none; position:absolute; width:60%; height:60%; border:2px dashed #34d399; background:rgba(52,211,153,0.15); box-shadow:0 0 0 9999px rgba(0,0,0,0.5); cursor:move; top:20%; left:20%; border-radius:4px; z-index:10;">
+                    <span style="position:absolute; top:4px; right:6px; font-size:10px; background:rgba(0,0,0,0.7); color:#34d399; padding:2px 6px; border-radius:4px; font-weight:bold; pointer-events:none;">✂️ اسحب لتحديد منطقة القطع</span>
+                  </div>
+
+                  <span class="frame-time-badge" id="frameTimeBadge" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.85); color:#a5b4fc; border:1px solid #6366f1; padding:4px 10px; border-radius:12px; font-family:monospace; font-weight:bold; z-index:15;">00:00:00</span>
+                </div>
+
+                <div class="frame-slider-wrap" style="direction: ltr; padding:10px;">
+                  <label for="frameTimeRange" data-i18n="frameTime" style="direction: rtl; display:block; margin-bottom:6px;">اختر وقت اللقطة في الفيديو</label>
+                  <input type="range" id="frameTimeRange" min="0" max="100" value="0" step="0.1" style="direction: ltr;">
+                  <input type="text" id="frameTimeInput" value="00:00:00" spellcheck="false">
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Image Aspect Ratio & Dimensions Control Row (أبعاد وحجم الصورة) -->
+            <div class="image-aspect-row" id="imageAspectRow" style="margin-bottom:14px; background:rgba(15,23,42,0.7); padding:12px; border-radius:12px; border:1px solid rgba(99,102,241,0.25);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <label style="font-size:13px; font-weight:bold; color:var(--text-bright); display:flex; align-items:center; gap:6px;">
+                  <i class="fas fa-ruler-combined" style="color:var(--primary-light);"></i> <span data-i18n="imageDimensions">أبعاد وحجم الصورة</span>
+                </label>
+                <span class="aspect-badge" id="aspectBadge" style="font-size:11px; background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.3); padding:3px 10px; border-radius:10px; font-weight:bold;">📐 افتراضي (16:9)</span>
+              </div>
+
+              <div class="aspect-pills" id="aspectPills" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                <button type="button" class="aspect-pill active" data-aspect="default" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                  <i class="fas fa-expand"></i> <span data-i18n="aspectDefault">افتراضي (16:9)</span>
+                </button>
+                <button type="button" class="aspect-pill" data-aspect="1:1" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                  <i class="fas fa-square"></i> <span data-i18n="aspect11">مربع (1:1)</span>
+                </button>
+                <button type="button" class="aspect-pill" data-aspect="9:16" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                  <i class="fas fa-mobile-alt"></i> <span data-i18n="aspect916">جوال / ريلز (9:16)</span>
+                </button>
+                <button type="button" class="aspect-pill" data-aspect="4:5" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                  <i class="fas fa-portrait"></i> <span data-i18n="aspect45">بوست انستغرام (4:5)</span>
+                </button>
+                <button type="button" class="aspect-pill" data-aspect="21:9" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                  <i class="fas fa-tv"></i> <span data-i18n="aspect219">سينمائي (21:9)</span>
+                </button>
+                <button type="button" class="aspect-pill" data-aspect="custom" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                  <i class="fas fa-sliders-h"></i> <span data-i18n="aspectCustom">مخصص px</span>
+                </button>
+              </div>
+
+              <div class="custom-aspect-inputs" id="customAspectInputs" style="display:none; margin-top:10px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1); align-items:center; gap:10px;">
+                <div style="flex:1;">
+                  <span style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:3px;">العرض (Width px)</span>
+                  <input type="number" id="customAspectWidth" value="1080" min="100" max="7680" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border-color); color:#fff; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center;">
+                </div>
+                <span style="color:var(--text-dim); font-weight:bold; margin-top:14px;">×</span>
+                <div style="flex:1;">
+                  <span style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:3px;">الارتفاع (Height px)</span>
+                  <input type="number" id="customAspectHeight" value="1080" min="100" max="7680" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border-color); color:#fff; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center;">
+                </div>
+              </div>
+
+              <!-- 3.1 Mask Shape Selector (نوع وشكل إطار الصورة: مربع، دائري، حواف دائرية) -->
+              <div class="mask-shape-row" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+                <label style="font-size:12px; color:var(--text-dim); font-weight:bold; display:flex; align-items:center; gap:6px;">
+                  <i class="fas fa-shapes" style="color:#34d399;"></i> <span data-i18n="maskShapeLabel">شكل ونوع الإطار:</span>
+                </label>
+                <div class="shape-pills" id="maskShapePills" style="display:flex; gap:6px;">
+                  <button type="button" class="mask-shape-pill active" data-shape="rect" style="padding:4px 12px; font-size:11px; border-radius:6px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                    <i class="fas fa-vector-square"></i> <span data-i18n="shapeRect">مربع / مستطيل</span>
+                  </button>
+                  <button type="button" class="mask-shape-pill" data-shape="circle" style="padding:4px 12px; font-size:11px; border-radius:6px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                    <i class="fas fa-circle"></i> <span data-i18n="shapeCircle">دائري / أفتار</span>
+                  </button>
+                  <button type="button" class="mask-shape-pill" data-shape="rounded" style="padding:4px 12px; font-size:11px; border-radius:6px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
+                    <i class="far fa-square"></i> <span data-i18n="shapeRounded">حواف دائرية</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Independent Image Format Row (صيغة الصورة المستقلة — PNG افتراضي) -->
             <div class="image-format-row">
-              <label data-i18n="imageFormat">صيغة الصورة</label>
+              <label data-i18n="imageFormat"><i class="fas fa-file-image" style="color:var(--primary-light);"></i> صيغة التصدير والصورة (Export Format)</label>
               <div class="format-pills" id="imageFormatPills">
-                <button type="button" class="format-pill active" data-format="jpg">JPG</button>
-                <button type="button" class="format-pill" data-format="png">PNG</button>
-                <button type="button" class="format-pill" data-format="webp">WEBP</button>
+                <button type="button" class="format-pill active" data-format="png"><i class="fas fa-file-image"></i> PNG (افتراضي عالي الجودة)</button>
+                <button type="button" class="format-pill" data-format="jpg"><i class="fas fa-file-image"></i> JPG (حجم خفيف)</button>
+                <button type="button" class="format-pill" data-format="webp"><i class="fas fa-file-image"></i> WEBP (حديث مدمج)</button>
               </div>
             </div>
           </div>
 
-          <div class="studio-workspace studio-dub-workspace" id="dubWorkspace">
-            <div class="dub-mode-cards">
-              <button type="button" class="dub-mode-card active" data-dub-mode="ai">
-                <i class="fas fa-robot"></i>
-                <strong data-i18n="dubAi">دبلجة ذكية AI</strong>
-                <span data-i18n="dubAiDesc">ترجمة + صوت آلي — يعمل حتى بدون دبلجة جاهزة</span>
-              </button>
-              <button type="button" class="dub-mode-card" data-dub-mode="subtitles">
-                <i class="fas fa-closed-captioning"></i>
-                <strong data-i18n="dubSubs">ترجمة نصية</strong>
-                <span data-i18n="dubSubsDesc">ترجمة مدمجة مع الفيديو</span>
-              </button>
-              <button type="button" class="dub-mode-card" data-dub-mode="dub_and_sub">
-                <i class="fas fa-layer-group"></i>
-                <strong data-i18n="dubAndSub">دبلجة وترجمة معاً</strong>
-                <span data-i18n="dubAndSubDesc">صوت مدبلج بالذكاء الاصطناعي + ترجمة نصية مطبوعة (حفظ الموسيقى)</span>
-              </button>
-            </div>
 
-            <div class="dub-info-banner" id="dubInfoBanner">
-              <i class="fas fa-info-circle"></i>
-              <span id="dubInfoText" data-i18n-dynamic="true">عند الدبلجة: يُحمّل الفيديو بدون صوت ثم يُدمج الصوت المدبلج فقط — لا تداخل صوتي</span>
-            </div>
-
-            <div class="dub-language-row">
-              <label for="dubLanguageSelect" data-i18n="dubTargetLang">لغة الدبلجة / الترجمة واللهجة</label>
-              <select id="dubLanguageSelect">
-                <option value="ar">العربية (الفصحى)</option>
-                <option value="ar-SA">العربية (اللهجة السعودية)</option>
-                <option value="ar-MA">العربية (اللهجة المغربية)</option>
-                <option value="ar-EG">العربية (اللهجة المصرية)</option>
-                <option value="ar-DZ">العربية (اللهجة الجزائرية)</option>
-                <option value="ar-SY">العربية (اللهجة الشامية)</option>
-                <option value="fr">Français (الفرنسية - العامة)</option>
-                <option value="fr-FR">Français (France)</option>
-                <option value="fr-CA">Français (Canada)</option>
-                <option value="en">English (الإنجليزية - العامة)</option>
-                <option value="en-US">English (US)</option>
-                <option value="en-GB">English (UK)</option>
-              </select>
-            </div>
-
-            <div class="dub-voice-row" id="dubVoiceRow">
-              <label for="dubVoiceSelect" data-i18n="dubVoiceLabel">نبرة وصوت الدبلجة بالذكاء الاصطناعي</label>
-              <select id="dubVoiceSelect">
-                <option value="auto">تلقائي (افتراضي ذكي)</option>
-                <option value="female-soft">صوت فتاة (ناعم)</option>
-                <option value="female-normal">صوت فتاة (طبيعي)</option>
-                <option value="male-normal">صوت شاب (طبيعي)</option>
-                <option value="male-deep">صوت رجل (عميق)</option>
-                <option value="young-energetic">صوت شبابي (حماسي)</option>
-              </select>
-            </div>
-
-            <div class="dub-speed-sync-grid">
-              <div class="dub-control-col">
-                <label for="dubSpeedSelect" data-i18n="dubSpeedLabel">سرعة نطق الدبلجة (Speech Speed)</label>
-                <select id="dubSpeedSelect">
-                  <option value="0.85">0.85x (بطيء وواضح)</option>
-                  <option value="1.0" selected>1.0x (سرعة طبيعية - افتراضي)</option>
-                  <option value="1.15">1.15x (سريع متناسق)</option>
-                  <option value="1.25">1.25x (سريع ومكثف)</option>
-                  <option value="1.5">1.5x (سريع جداً)</option>
-                </select>
-              </div>
-              <div class="dub-control-col">
-                <label for="dubSyncSelect" data-i18n="dubSyncLabel">توقيت التزامن والفواصل بين الجمل (Sync Timing)</label>
-                <select id="dubSyncSelect">
-                  <option value="0.0">تزامن دقيق ومباشر (0.0 ثانية)</option>
-                  <option value="0.2" selected>تزامن متوازن وطبيعي (+0.2 ثانية - افتراضي)</option>
-                  <option value="0.5">فواصل مريحة بين الجمل (+0.5 ثانية)</option>
-                  <option value="0.8">فواصل متباعدة ومسترخية (+0.8 ثانية)</option>
-                </select>
-              </div>
-            </div>
-
-            <p class="dub-availability" id="dubAvailability"></p>
-          </div>
-        </div>
 
         <div class="download-options" id="downloadOptions">
           <div class="options-group options-group-unified" id="unifiedQualityPanel">
@@ -535,7 +615,7 @@
 
       <section class="section" id="settingsSection">
         <div class="settings-card">
-          <h3><i class="fas fa-cog"></i> <span data-i18n="settingsTitle">الإعدادات العامة</span></h3>
+          <h3><i class="fas fa-cog"></i> <span data-i18n="settingsTitle">الإعدادات العامة والتفضيلات</span></h3>
           
           <div class="setting-item">
             <label data-i18n="language">اللغة</label>
@@ -564,7 +644,43 @@
               <option value="360">360p</option>
             </select>
           </div>
-          
+
+          <!-- Speed Limiter & Retries (نقل للإعدادات بناءً على الطلب) -->
+          <div class="setting-item">
+            <label><i class="fas fa-tachometer-alt" style="color:var(--primary-light);"></i> أقصى سرعة تنزيل (Bandwidth Limit)</label>
+            <select id="settingSpeedLimit">
+              <option value="unlimited">بدون حد (أقصى سرعة فائقة)</option>
+              <option value="10M">10 MB/s (سريع جداً)</option>
+              <option value="5M">5 MB/s (متوسط معقول)</option>
+              <option value="2M">2 MB/s (توفير الباقة)</option>
+              <option value="1M">1 MB/s (خلفية النظام)</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <label><i class="fas fa-redo" style="color:var(--primary-light);"></i> إعادة المحاولات التلقائية عند الانقطاع</label>
+            <select id="settingAutoRetryCount">
+              <option value="10">10 محاولات تلقائية (استقرار فائق)</option>
+              <option value="5">5 محاولات</option>
+              <option value="3">3 محاولات</option>
+            </select>
+          </div>
+
+          <!-- Download Scheduler (نقل للإعدادات بناءً على الطلب) -->
+          <div class="setting-item" style="flex-direction:column; align-items:flex-start; gap:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;">
+            <label style="font-weight:bold; color:#fff;"><i class="fas fa-clock" style="color:#10b981;"></i> جدولة التحميل التلقائي (Download Scheduler)</label>
+            <p style="font-size:12px; color:var(--text-secondary); margin:0;">حدد وقتاً مستقبلياً لتنزيل سلسلة الروابط تلقائياً (مثلاً ليلاً):</p>
+            <div style="display:flex; gap:8px; width:100%; flex-wrap:wrap; align-items:center; margin-top:4px;">
+              <input type="time" id="settingScheduleTime" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:13px;">
+              <input type="number" id="settingScheduleDelayMin" placeholder="أو بعد دقائق (مثلاً 30)" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:13px; flex:1; min-width:140px;">
+              <button type="button" class="btn-browse" id="settingStartScheduleBtn" style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; font-size:12px;">
+                <i class="fas fa-calendar-check"></i> تفعيل الجدولة
+              </button>
+            </div>
+            <div id="settingScheduleStatus" style="font-size:12px; color:#34d399; margin-top:4px;"></div>
+          </div>
+
+
           <div class="setting-item toggle">
             <label data-i18n="audioOnlyDefault">تحميل الصوت فقط كـ MP3</label>
             <input type="checkbox" id="defaultAudioOnly">
@@ -611,6 +727,19 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- Image Fullscreen Inspection Modal (ملء الشاشة لمعاينة الصورة واللقطة) -->
+  <div id="imageFullscreenModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.95); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:20px;">
+    <div style="position:absolute; top:20px; right:20px; display:flex; gap:12px; align-items:center; z-index:10000;">
+      <span id="modalImageTitle" style="color:#a5b4fc; font-weight:bold; font-size:14px; background:rgba(15,23,42,0.8); padding:6px 14px; border-radius:12px; border:1px solid #6366f1;">معاينة بحجم الشاشة الكاملة</span>
+      <button type="button" id="closeFullscreenModalBtn" style="background:#ef4444; color:#fff; border:none; padding:8px 16px; border-radius:10px; cursor:pointer; font-weight:bold; font-size:14px; display:flex; align-items:center; gap:6px;">
+        <i class="fas fa-times"></i> إغلاق
+      </button>
+    </div>
+    <div style="max-width:90vw; max-height:85vh; display:flex; justify-content:center; align-items:center; overflow:auto;">
+      <img id="fullscreenModalImg" src="" style="max-width:90vw; max-height:85vh; object-fit:contain; border-radius:12px; border:1px solid rgba(255,255,255,0.2); transition:transform 0.2s ease;" alt="معاينة الشاشة الكاملة">
+    </div>
   </div>
 
   <script src="i18n.js"></script>

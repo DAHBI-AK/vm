@@ -1,4 +1,4 @@
-// State
+﻿// State
 let currentVideoInfo = null;
 let selectedFormat = null;
 let selectedType = null;
@@ -11,23 +11,180 @@ let videoDuration = 0;
 let clipStart = 0;
 let clipEnd = 30;
 let imageMode = 'thumbnail';
-let imageFormat = 'jpg';
+let imageFormat = 'png';
 let frameTime = 0;
+let thumbZoomScale = 1;
+let frameZoomScale = 1;
+let cropPositionPercent = { x: 20, y: 20 };
+let maskShape = 'rect';
+
+function updateMaskShapeUI() {
+  const thumbCrop = document.getElementById('thumbCropFrame');
+  const frameCrop = document.getElementById('frameCropFrame');
+  let radius = '4px';
+  if (maskShape === 'circle') radius = '50%';
+  else if (maskShape === 'rounded') radius = '18px';
+
+  [thumbCrop, frameCrop].forEach((el) => {
+    if (el) el.style.borderRadius = radius;
+  });
+}
+
+function applyAspectToPreviewScreens() {
+  const thumbnailImg = document.getElementById('thumbnailPreviewImg');
+  const frameImg = document.getElementById('framePreviewImg');
+  const framePlayer = document.getElementById('frameVideoPlayer');
+  const thumbContainer = document.getElementById('thumbImgContainer');
+  const frameContainer = document.getElementById('frameImgContainer');
+  const aspectBadge = document.getElementById('aspectBadge');
+  const customInputs = document.getElementById('customAspectInputs');
+  const thumbCrop = document.getElementById('thumbCropFrame');
+  const frameCrop = document.getElementById('frameCropFrame');
+
+  if (customInputs) {
+    customInputs.style.display = imageAspect === 'custom' ? 'flex' : 'none';
+  }
+
+  let aspectStyle = '16 / 9';
+  let aspectLabel = '📐 افتراضي (16:9)';
+  let containerMaxWidth = '100%';
+  let containerMaxHeight = '280px';
+
+  if (imageAspect === '1:1') {
+    aspectStyle = '1 / 1';
+    aspectLabel = '📐 مربع (1:1)';
+    containerMaxWidth = '250px';
+    containerMaxHeight = '250px';
+  } else if (imageAspect === '9:16') {
+    aspectStyle = '9 / 16';
+    aspectLabel = '📐 جوال / ريلز (9:16)';
+    containerMaxWidth = '190px';
+    containerMaxHeight = '320px';
+  } else if (imageAspect === '4:5') {
+    aspectStyle = '4 / 5';
+    aspectLabel = '📐 انستغرام (4:5)';
+    containerMaxWidth = '230px';
+    containerMaxHeight = '285px';
+  } else if (imageAspect === '21:9') {
+    aspectStyle = '21 / 9';
+    aspectLabel = '📐 سينمائي (21:9)';
+    containerMaxWidth = '100%';
+    containerMaxHeight = '200px';
+  } else if (imageAspect === 'custom') {
+    const w = parseInt(document.getElementById('customAspectWidth')?.value) || 1080;
+    const h = parseInt(document.getElementById('customAspectHeight')?.value) || 1080;
+    aspectStyle = `${w} / ${h}`;
+    aspectLabel = `📐 مخصص (${w}×${h} px)`;
+    containerMaxWidth = w >= h ? '100%' : '230px';
+    containerMaxHeight = w >= h ? '260px' : '320px';
+  }
+
+  if (aspectBadge) {
+    aspectBadge.textContent = aspectLabel;
+  }
+
+  [thumbContainer, frameContainer].forEach((cont) => {
+    if (cont) {
+      cont.style.maxWidth = containerMaxWidth;
+      cont.style.maxHeight = containerMaxHeight;
+      cont.style.margin = '0 auto';
+      cont.style.aspectRatio = imageAspect === 'default' ? '' : aspectStyle;
+    }
+  });
+
+  [thumbnailImg, frameImg, framePlayer].forEach((el) => {
+    if (el) {
+      if (imageAspect === 'default') {
+        el.style.aspectRatio = '';
+        el.style.objectFit = 'contain';
+      } else {
+        el.style.aspectRatio = aspectStyle;
+        el.style.objectFit = 'cover';
+      }
+    }
+  });
+
+  const showCrop = imageAspect !== 'default';
+  if (thumbCrop) thumbCrop.style.display = showCrop ? 'block' : 'none';
+  if (frameCrop) frameCrop.style.display = showCrop ? 'block' : 'none';
+
+  if (showCrop) {
+    bindCropDraggable(thumbCrop, thumbContainer);
+    bindCropDraggable(frameCrop, frameContainer);
+  }
+  updateMaskShapeUI();
+}
+
+function bindCropDraggable(cropFrameEl, containerEl) {
+  if (!cropFrameEl || !containerEl || cropFrameEl.dataset.dragBound) return;
+  cropFrameEl.dataset.dragBound = 'true';
+
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let initialLeft = 0;
+  let initialTop = 0;
+
+  cropFrameEl.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    initialLeft = cropFrameEl.offsetLeft;
+    initialTop = cropFrameEl.offsetTop;
+    document.body.style.userSelect = 'none';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    const maxLeft = Math.max(0, containerEl.clientWidth - cropFrameEl.clientWidth);
+    const maxTop = Math.max(0, containerEl.clientHeight - cropFrameEl.clientHeight);
+
+    const newLeft = Math.max(0, Math.min(initialLeft + dx, maxLeft));
+    const newTop = Math.max(0, Math.min(initialTop + dy, maxTop));
+
+    cropFrameEl.style.left = `${newLeft}px`;
+    cropFrameEl.style.top = `${newTop}px`;
+
+    cropPositionPercent.x = maxLeft > 0 ? (newLeft / maxLeft) * 100 : 0;
+    cropPositionPercent.y = maxTop > 0 ? (newTop / maxTop) * 100 : 0;
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      document.body.style.userSelect = '';
+    }
+  });
+}
+
+function openImageFullscreenModal(imgSrc, title = 'معاينة بحجم الشاشة الكاملة') {
+  const modal = document.getElementById('imageFullscreenModal');
+  const modalImg = document.getElementById('fullscreenModalImg');
+  const modalTitle = document.getElementById('modalImageTitle');
+  if (modal && modalImg) {
+    modalImg.src = imgSrc;
+    if (modalTitle) modalTitle.textContent = title;
+    modal.style.display = 'flex';
+  }
+}
+
+function closeImageFullscreenModal() {
+  const modal = document.getElementById('imageFullscreenModal');
+  if (modal) modal.style.display = 'none';
+}
 let timelineRaf = null;
 const clientInfoCache = new Map();
 let storedFormats = null;
 let downloadType = 'video-audio';
-let dubMode = 'ai';
-let dubLanguage = 'ar';
 let currentSection = 'downloader';
 
-let dubVoice = 'auto';
-let dubSpeed = '1.0';
-let dubSyncGap = '0.2';
 let downloadQueue = [];
 let isQueueProcessing = false;
 
-const PREFERRED_DUB_LANGS = ['ar', 'ar-SA', 'ar-MA', 'ar-EG', 'ar-DZ', 'ar-SY', 'en', 'en-US', 'en-GB', 'fr', 'fr-FR', 'fr-CA'];
 const DEFAULT_DOWNLOAD_PATH_KEY = 'defaultDownloadPath';
 const CLIPBOARD_WATCH_KEY = 'clipboardAutoDetect';
 const NOTIFICATIONS_KEY = 'notificationsEnabled';
@@ -131,15 +288,6 @@ const elements = {
   imageFormatPills: document.querySelectorAll('.format-pill'),
   presetButtons: document.querySelectorAll('.preset-btn'),
   downloadBtnText: document.getElementById('downloadBtnText'),
-  dubWorkspace: document.getElementById('dubWorkspace'),
-  dubModeCards: document.querySelectorAll('.dub-mode-card'),
-  dubLanguageSelect: document.getElementById('dubLanguageSelect'),
-  dubVoiceSelect: document.getElementById('dubVoiceSelect'),
-  dubSpeedSelect: document.getElementById('dubSpeedSelect'),
-  dubSyncSelect: document.getElementById('dubSyncSelect'),
-  dubInfoBanner: document.getElementById('dubInfoBanner'),
-  dubAvailability: document.getElementById('dubAvailability'),
-  dubInfoText: document.getElementById('dubInfoText'),
   batchToggleBtn: document.getElementById('batchToggleBtn'),
   batchQueuePanel: document.getElementById('batchQueuePanel'),
   closeBatchBtn: document.getElementById('closeBatchBtn'),
@@ -280,6 +428,178 @@ function clampClipRange() {
   clipEnd = Math.max(clipStart + 1, Math.min(clipEnd, maxDuration));
 }
 
+let clipStreamLoading = false;
+let activeCutHandle = 'start';
+let imageAspect = 'default';
+
+function applyAspectToPreviewScreens() {
+  const thumbnailImg = document.getElementById('thumbnailPreviewImg');
+  const frameImg = document.getElementById('framePreviewImg');
+  const framePlayer = document.getElementById('frameVideoPlayer');
+  const aspectBadge = document.getElementById('aspectBadge');
+  const customInputs = document.getElementById('customAspectInputs');
+
+  if (customInputs) {
+    customInputs.style.display = imageAspect === 'custom' ? 'flex' : 'none';
+  }
+
+  let aspectStyle = 'auto';
+  let aspectLabel = '📐 افتراضي (16:9)';
+
+  if (imageAspect === '1:1') {
+    aspectStyle = '1 / 1';
+    aspectLabel = '📐 مربع (1:1)';
+  } else if (imageAspect === '9:16') {
+    aspectStyle = '9 / 16';
+    aspectLabel = '📐 جوال / ريلز (9:16)';
+  } else if (imageAspect === '4:5') {
+    aspectStyle = '4 / 5';
+    aspectLabel = '📐 انستغرام (4:5)';
+  } else if (imageAspect === '21:9') {
+    aspectStyle = '21 / 9';
+    aspectLabel = '📐 سينمائي (21:9)';
+  } else if (imageAspect === 'custom') {
+    const w = parseInt(document.getElementById('customAspectWidth')?.value) || 1080;
+    const h = parseInt(document.getElementById('customAspectHeight')?.value) || 1080;
+    aspectStyle = `${w} / ${h}`;
+    aspectLabel = `📐 مخصص (${w}×${h} px)`;
+  }
+
+  if (aspectBadge) {
+    aspectBadge.textContent = aspectLabel;
+  }
+
+  [thumbnailImg, frameImg, framePlayer].forEach((el) => {
+    if (el) {
+      if (imageAspect === 'default') {
+        el.style.aspectRatio = '';
+        el.style.objectFit = 'contain';
+      } else {
+        el.style.aspectRatio = aspectStyle;
+        el.style.objectFit = 'cover';
+      }
+    }
+  });
+}
+
+function ensureClipPlayerStream() {
+  const player = document.getElementById('clipVideoPlayer');
+  if (!player || player.src || clipStreamLoading || !currentVideoInfo) return;
+
+  const url = elements.videoUrl?.value?.trim();
+  if (!url || !window.electronAPI?.getStreamUrl) return;
+
+  clipStreamLoading = true;
+  window.electronAPI.getStreamUrl({ url, options: { mode: 'clip' } }).then((res) => {
+    clipStreamLoading = false;
+    if (res?.success && res.url) {
+      player.src = res.url;
+      player.style.display = 'block';
+      const frameImg = document.getElementById('clipFrameImg');
+      const placeholder = document.getElementById('clipPlayerPlaceholder');
+      if (frameImg) frameImg.style.display = 'none';
+      if (placeholder) placeholder.style.display = 'none';
+      try {
+        player.pause();
+        player.currentTime = (activeCutHandle === 'end' ? clipEnd : clipStart) || 0;
+      } catch (e) {}
+    }
+  }).catch(() => {
+    clipStreamLoading = false;
+  });
+}
+
+function syncClipFramePreview(timeSeconds, labelText = '') {
+  const player = document.getElementById('clipVideoPlayer');
+  const badge = document.getElementById('clipCurrentFrameBadge');
+  const overlayBadge = document.getElementById('clipFrameBadgeOverlay');
+  const placeholder = document.getElementById('clipPlayerPlaceholder');
+  const frameImg = document.getElementById('clipFrameImg');
+
+  const validTime = Math.max(0, Math.min(Number(timeSeconds) || 0, videoDuration || Number(timeSeconds) || 0));
+  const formattedTime = formatTimecode(validTime);
+
+  if (badge) {
+    badge.textContent = `${formattedTime} ${labelText ? '(' + labelText + ')' : ''}`;
+  }
+
+  if (overlayBadge) {
+    overlayBadge.style.display = 'block';
+    overlayBadge.innerHTML = `<i class="fas fa-eye" style="color:#34d399;"></i> ${labelText ? labelText + ': ' : ''}${formattedTime}`;
+  }
+
+  ensureClipPlayerStream();
+
+  if (player) {
+    if (placeholder) placeholder.style.display = 'none';
+
+    if (player.src) {
+      player.style.display = 'block';
+      if (frameImg) frameImg.style.display = 'none';
+      try {
+        player.pause();
+        player.currentTime = validTime;
+      } catch (e) {}
+    } else if (currentVideoInfo?.thumbnail && frameImg) {
+      frameImg.src = currentVideoInfo.thumbnail;
+      frameImg.style.display = 'block';
+      player.style.display = 'none';
+    }
+  }
+}
+
+function updateImageWorkspaceUI() {
+  const thumbnailBox = document.getElementById('thumbnailPreviewBox');
+  const thumbnailImg = document.getElementById('thumbnailPreviewImg');
+  const frameControls = document.getElementById('frameControls');
+
+  if (imageMode === 'thumbnail') {
+    if (thumbnailBox) thumbnailBox.style.display = 'block';
+    if (frameControls) frameControls.style.display = 'none';
+    if (thumbnailImg && currentVideoInfo?.thumbnail) {
+      thumbnailImg.src = currentVideoInfo.thumbnailUrl || currentVideoInfo.thumbnail;
+    }
+  } else {
+    if (thumbnailBox) thumbnailBox.style.display = 'none';
+    if (frameControls) frameControls.style.display = 'block';
+    ensureClipPlayerStream();
+    syncFrameCapturePreview(frameTime);
+  }
+}
+
+function syncFrameCapturePreview(seconds) {
+  const timeSec = Math.max(0, Math.min(Number(seconds) || 0, videoDuration || Number(seconds) || 0));
+  const frameVideoPlayer = document.getElementById('frameVideoPlayer');
+  const clipVideoPlayer = document.getElementById('clipVideoPlayer');
+  const framePreviewImg = document.getElementById('framePreviewImg');
+  const frameTimeBadge = document.getElementById('frameTimeBadge');
+
+  if (frameTimeBadge) {
+    frameTimeBadge.textContent = formatTimecode(timeSec);
+  }
+
+  ensureClipPlayerStream();
+
+  const activePlayer = frameVideoPlayer?.src ? frameVideoPlayer : (clipVideoPlayer?.src ? clipVideoPlayer : null);
+  if (activePlayer && activePlayer.src) {
+    if (frameVideoPlayer) {
+      frameVideoPlayer.src = activePlayer.src;
+      frameVideoPlayer.style.display = 'block';
+    }
+    if (framePreviewImg) framePreviewImg.style.display = 'none';
+    try {
+      if (frameVideoPlayer) {
+        frameVideoPlayer.pause();
+        frameVideoPlayer.currentTime = timeSec;
+      }
+    } catch (e) {}
+  } else if (currentVideoInfo?.thumbnail && framePreviewImg) {
+    framePreviewImg.src = currentVideoInfo.thumbnail;
+    framePreviewImg.style.display = 'block';
+    if (frameVideoPlayer) frameVideoPlayer.style.display = 'none';
+  }
+}
+
 function updateTimelineUI() {
   if (!videoDuration) {
     return;
@@ -299,6 +619,12 @@ function updateTimelineUI() {
   elements.clipLengthLabel.textContent = formatShortTime(clipEnd - clipStart);
   elements.clipRangeLabel.textContent = `${formatShortTime(clipStart)} → ${formatShortTime(clipEnd)}`;
   elements.videoDurationLabel.textContent = formatTimecode(videoDuration);
+
+  if (activeCutHandle === 'end') {
+    syncClipFramePreview(clipEnd, 'فريم نهاية القص');
+  } else {
+    syncClipFramePreview(clipStart, 'فريم بداية القص');
+  }
 }
 
 function buildTimelineRuler() {
@@ -327,10 +653,9 @@ function initStudioTimeline() {
   elements.frameTimeRange.max = videoDuration || 100;
   elements.frameTimeRange.value = 0;
   elements.frameTimeInput.value = formatTimecode(0);
-  elements.frameTimeBadge.textContent = formatTimecode(0);
-
   buildTimelineRuler();
   updateTimelineUI();
+  syncClipFramePreview(clipStart, 'فريم البداية');
 }
 
 function updateDownloadButtonText() {
@@ -338,14 +663,6 @@ function updateDownloadButtonText() {
     elements.downloadBtnText.textContent = t('exportClip');
   } else if (studioMode === 'image') {
     elements.downloadBtnText.textContent = imageMode === 'thumbnail' ? t('downloadThumbnail') : t('extractFrame');
-  } else if (studioMode === 'dub') {
-    if (dubMode === 'ai') {
-      elements.downloadBtnText.textContent = t('downloadAiDubbed');
-    } else if (dubMode === 'subtitles') {
-      elements.downloadBtnText.textContent = t('downloadWithSubs');
-    } else {
-      elements.downloadBtnText.textContent = t('downloadDubbed');
-    }
   } else {
     elements.downloadBtnText.textContent = t('download');
   }
@@ -360,16 +677,11 @@ function setStudioMode(mode) {
 
   elements.clipWorkspace.classList.toggle('active', mode === 'clip');
   elements.imageWorkspace.classList.toggle('active', mode === 'image');
-  elements.dubWorkspace?.classList.toggle('active', mode === 'dub');
   elements.unifiedQualityPanel.classList.toggle('hidden', mode === 'image');
-  elements.downloadTypeTabs.classList.toggle('hidden', mode === 'clip' || mode === 'dub');
+  elements.downloadTypeTabs.classList.toggle('hidden', mode === 'clip');
 
   if (mode === 'image') {
-    elements.frameControls.style.display = imageMode === 'frame' ? 'grid' : 'none';
-  } else if (mode === 'dub') {
-    downloadType = 'video-only';
-    refreshUnifiedQualityGrid(true);
-    updateDubAvailability();
+    updateImageWorkspaceUI();
   } else {
     refreshUnifiedQualityGrid();
   }
@@ -379,17 +691,6 @@ function setStudioMode(mode) {
 }
 
 function updateQualityHint() {
-  if (studioMode === 'dub') {
-    if (dubMode === 'ai') {
-      elements.qualityHint.textContent = t('qualityHintAi');
-    } else if (dubMode === 'subtitles') {
-      elements.qualityHint.textContent = t('qualityHintSubs');
-    } else {
-      elements.qualityHint.textContent = t('qualityHintDub');
-    }
-    return;
-  }
-
   if (studioMode === 'clip') {
     elements.qualityHint.textContent = t('qualityHintClip');
     return;
@@ -401,114 +702,6 @@ function updateQualityHint() {
     audio: t('qualityHintAudio')
   };
   elements.qualityHint.textContent = hints[downloadType] || hints['video-audio'];
-}
-
-function getLangDisplayName(code) {
-  const names = {
-    'ar': 'العربية (الفصحى)',
-    'ar-SA': 'العربية (اللهجة السعودية)',
-    'ar-MA': 'العربية (اللهجة المغربية)',
-    'ar-EG': 'العربية (اللهجة المصرية)',
-    'ar-DZ': 'العربية (اللهجة الجزائرية)',
-    'ar-SY': 'العربية (اللهجة الشامية)',
-    'fr': 'Français (الفرنسية)',
-    'fr-FR': 'Français (France)',
-    'fr-CA': 'Français (Canada)',
-    'en': 'English (الإلكترونية / الإنجليزية)',
-    'en-US': 'English (US)',
-    'en-GB': 'English (UK)'
-  };
-  return names[code] || code.toUpperCase();
-}
-
-function populateDubLanguages(info) {
-  if (!elements.dubLanguageSelect) {
-    return;
-  }
-
-  const sourceList = info.subtitleLanguages || info.audioLanguages || [];
-  const availableCodes = new Set(sourceList.map((item) => item.code));
-  const ordered = [];
-
-  PREFERRED_DUB_LANGS.forEach((code) => {
-    ordered.push(code);
-  });
-
-  sourceList.forEach((item) => {
-    if (!ordered.includes(item.code)) {
-      ordered.push(item.code);
-    }
-  });
-
-  elements.dubLanguageSelect.innerHTML = ordered.map((code) => {
-    const fromServer = sourceList.find((item) => item.code === code);
-    const label = fromServer?.name || getLangDisplayName(code);
-    return `<option value="${code}">${label}</option>`;
-  }).join('');
-
-  if (ordered.includes(dubLanguage)) {
-    elements.dubLanguageSelect.value = dubLanguage;
-  } else {
-    dubLanguage = 'ar';
-    elements.dubLanguageSelect.value = 'ar';
-  }
-
-  updateDubAvailability();
-}
-
-function updateDubAvailability() {
-  if (!elements.dubAvailability || !currentVideoInfo) {
-    return;
-  }
-
-  const langName = getLangDisplayName(dubLanguage);
-
-  if (dubMode === 'dub_and_sub') {
-    elements.dubAvailability.textContent = `جاهز للدبلجة الذكية والترجمة المدمجة إلى ${langName}`;
-  } else if (dubMode === 'ai') {
-    elements.dubAvailability.textContent = `جاهز للدبلجة الصوتية الذكية إلى ${langName}`;
-  } else {
-    elements.dubAvailability.textContent = `جاهز للترجمة النصية المطبوعة إلى ${langName}`;
-  }
-  elements.dubAvailability.className = 'dub-availability ok';
-
-  if (elements.dubInfoBanner) {
-    elements.dubInfoBanner.classList.toggle('subs-mode', dubMode === 'subtitles' || dubMode === 'ai' || dubMode === 'dub_and_sub');
-  }
-
-  if (elements.dubInfoText) {
-    if (dubMode === 'dub_and_sub') {
-      elements.dubInfoText.textContent = 'خيار دبلجة وترجمة معاً: يدمج بين صوت مدبلج بالذكاء الاصطناعي (مع حفظ الموسيقى والتأثيرات) والترجمة النصية المطبوعة خطياً على الفيديو باللغة المختارة';
-    } else if (dubMode === 'ai') {
-      elements.dubInfoText.textContent = t('dubAiInfo');
-    } else if (dubMode === 'subtitles') {
-      elements.dubInfoText.textContent = t('dubSubsInfo');
-    } else {
-      elements.dubInfoText.textContent = t('dubRemoveOriginal');
-    }
-  }
-}
-
-function setDubMode(mode) {
-  dubMode = mode;
-  elements.dubModeCards?.forEach((card) => {
-    card.classList.toggle('active', card.dataset.dubMode === mode);
-  });
-
-  if (elements.dubVoiceRow) {
-    elements.dubVoiceRow.classList.toggle('hidden', mode !== 'ai' && mode !== 'dub_and_sub');
-  }
-
-  const speedSyncRow = document.querySelector('.dub-speed-sync-grid');
-  if (speedSyncRow) {
-    speedSyncRow.classList.toggle('hidden', mode !== 'ai' && mode !== 'dub_and_sub');
-  }
-
-  if (currentVideoInfo) {
-    populateDubLanguages(currentVideoInfo);
-  }
-  updateQualityHint();
-  updateDownloadButtonText();
 }
 
 function getActiveDownloadType() {
@@ -534,7 +727,7 @@ function refreshUnifiedQualityGrid(keepSelection = false) {
 
   const previousHeight = selectedHeight;
   const previousFormat = selectedFormat;
-  const type = studioMode === 'dub' ? 'video-only' : getActiveDownloadType();
+  const type = getActiveDownloadType();
 
   elements.unifiedQualityGrid.innerHTML = '';
 
@@ -600,32 +793,90 @@ function bindStudioEvents() {
   });
 
   elements.clipStartRange.addEventListener('input', () => {
+    activeCutHandle = 'start';
     const maxDuration = videoDuration || 1;
     clipStart = (Number(elements.clipStartRange.value) / 100) * maxDuration;
     if (clipStart >= clipEnd - 1) {
       clipStart = Math.max(0, clipEnd - 1);
     }
     scheduleTimelineUpdate();
+    syncClipFramePreview(clipStart, 'فريم بداية القص');
   });
 
   elements.clipEndRange.addEventListener('input', () => {
+    activeCutHandle = 'end';
     const maxDuration = videoDuration || 1;
     clipEnd = (Number(elements.clipEndRange.value) / 100) * maxDuration;
     if (clipEnd <= clipStart + 1) {
       clipEnd = Math.min(maxDuration, clipStart + 1);
     }
     scheduleTimelineUpdate();
+    syncClipFramePreview(clipEnd, 'فريم نهاية القص');
   });
 
   elements.clipStartTime.addEventListener('change', () => {
+    activeCutHandle = 'start';
     clipStart = parseTimecode(elements.clipStartTime.value);
     updateTimelineUI();
+    syncClipFramePreview(clipStart, 'فريم بداية القص');
   });
 
   elements.clipEndTime.addEventListener('change', () => {
+    activeCutHandle = 'end';
     clipEnd = parseTimecode(elements.clipEndTime.value);
     updateTimelineUI();
+    syncClipFramePreview(clipEnd, 'فريم نهاية القص');
   });
+
+  const timelineTrackEl = document.getElementById('timelineTrack');
+  if (timelineTrackEl && !timelineTrackEl.dataset.bound) {
+    timelineTrackEl.dataset.bound = 'true';
+    timelineTrackEl.addEventListener('click', (e) => {
+      if (!videoDuration) return;
+      const rect = timelineTrackEl.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+      const clickedTime = pct * videoDuration;
+      syncClipFramePreview(clickedTime, 'الفريم المختار');
+    });
+  }
+
+  const clipPreviewStartBtn = document.getElementById('clipPreviewStartBtn');
+  const clipPreviewEndBtn = document.getElementById('clipPreviewEndBtn');
+  const clipPlayTrimmedBtn = document.getElementById('clipPlayTrimmedBtn');
+
+  if (clipPreviewStartBtn && !clipPreviewStartBtn.dataset.bound) {
+    clipPreviewStartBtn.dataset.bound = 'true';
+    clipPreviewStartBtn.addEventListener('click', () => {
+      activeCutHandle = 'start';
+      syncClipFramePreview(clipStart, 'فريم بداية القص');
+    });
+  }
+
+  if (clipPreviewEndBtn && !clipPreviewEndBtn.dataset.bound) {
+    clipPreviewEndBtn.dataset.bound = 'true';
+    clipPreviewEndBtn.addEventListener('click', () => {
+      activeCutHandle = 'end';
+      syncClipFramePreview(clipEnd, 'فريم نهاية القص');
+    });
+  }
+
+  if (clipPlayTrimmedBtn && !clipPlayTrimmedBtn.dataset.bound) {
+    clipPlayTrimmedBtn.dataset.bound = 'true';
+    clipPlayTrimmedBtn.addEventListener('click', () => {
+      const player = document.getElementById('clipVideoPlayer');
+      if (player) {
+        player.currentTime = clipStart;
+        player.play().catch(() => {});
+        const onTimeUpdate = () => {
+          if (player.currentTime >= clipEnd) {
+            player.pause();
+            player.removeEventListener('timeupdate', onTimeUpdate);
+          }
+        };
+        player.addEventListener('timeupdate', onTimeUpdate);
+      }
+    });
+  }
 
   document.querySelectorAll('input[name="clipAudioMode"]').forEach((input) => {
     input.addEventListener('change', () => refreshUnifiedQualityGrid(true));
@@ -648,7 +899,7 @@ function bindStudioEvents() {
       imageMode = card.dataset.imageMode;
       elements.imageModeCards.forEach((item) => item.classList.remove('active'));
       card.classList.add('active');
-      elements.frameControls.style.display = imageMode === 'frame' ? 'grid' : 'none';
+      updateImageWorkspaceUI();
       updateDownloadButtonText();
     });
   });
@@ -657,6 +908,7 @@ function bindStudioEvents() {
     frameTime = Number(elements.frameTimeRange.value) || 0;
     elements.frameTimeInput.value = formatTimecode(frameTime);
     elements.frameTimeBadge.textContent = formatTimecode(frameTime);
+    syncFrameCapturePreview(frameTime);
   }, { passive: true });
 
   elements.frameTimeInput.addEventListener('change', () => {
@@ -665,6 +917,7 @@ function bindStudioEvents() {
     elements.frameTimeRange.value = frameTime;
     elements.frameTimeInput.value = formatTimecode(frameTime);
     elements.frameTimeBadge.textContent = formatTimecode(frameTime);
+    syncFrameCapturePreview(frameTime);
   });
 
   elements.imageFormatPills.forEach((pill) => {
@@ -675,15 +928,97 @@ function bindStudioEvents() {
     });
   });
 
-  elements.dubModeCards?.forEach((card) => {
-    card.addEventListener('click', () => setDubMode(card.dataset.dubMode));
+  // Zoom & Fullscreen Toolbar Listeners
+  const thumbImgEl = document.getElementById('thumbnailPreviewImg');
+  const frameImgEl = document.getElementById('framePreviewImg');
+  const framePlayerEl = document.getElementById('frameVideoPlayer');
+
+  document.getElementById('thumbZoomInBtn')?.addEventListener('click', () => {
+    thumbZoomScale = Math.min(3, thumbZoomScale + 0.25);
+    if (thumbImgEl) thumbImgEl.style.transform = `scale(${thumbZoomScale})`;
   });
 
-  elements.dubLanguageSelect?.addEventListener('change', () => {
-    dubLanguage = elements.dubLanguageSelect.value;
-    updateDubAvailability();
+  document.getElementById('thumbZoomOutBtn')?.addEventListener('click', () => {
+    thumbZoomScale = Math.max(0.5, thumbZoomScale - 0.25);
+    if (thumbImgEl) thumbImgEl.style.transform = `scale(${thumbZoomScale})`;
   });
-}
+
+  document.getElementById('thumbZoomResetBtn')?.addEventListener('click', () => {
+    thumbZoomScale = 1;
+    if (thumbImgEl) thumbImgEl.style.transform = 'scale(1)';
+  });
+
+  document.getElementById('thumbFullscreenBtn')?.addEventListener('click', () => {
+    if (thumbImgEl?.src) {
+      openImageFullscreenModal(thumbImgEl.src, 'معاينة غلاف الفيديو - شاشة كاملة');
+    }
+  });
+
+  document.getElementById('frameZoomInBtn')?.addEventListener('click', () => {
+    frameZoomScale = Math.min(3, frameZoomScale + 0.25);
+    if (frameImgEl) frameImgEl.style.transform = `scale(${frameZoomScale})`;
+    if (framePlayerEl) framePlayerEl.style.transform = `scale(${frameZoomScale})`;
+  });
+
+  document.getElementById('frameZoomOutBtn')?.addEventListener('click', () => {
+    frameZoomScale = Math.max(0.5, frameZoomScale - 0.25);
+    if (frameImgEl) frameImgEl.style.transform = `scale(${frameZoomScale})`;
+    if (framePlayerEl) framePlayerEl.style.transform = `scale(${frameZoomScale})`;
+  });
+
+  document.getElementById('frameZoomResetBtn')?.addEventListener('click', () => {
+    frameZoomScale = 1;
+    if (frameImgEl) frameImgEl.style.transform = 'scale(1)';
+    if (framePlayerEl) framePlayerEl.style.transform = 'scale(1)';
+  });
+
+  document.getElementById('frameFullscreenBtn')?.addEventListener('click', () => {
+    if (frameImgEl?.src && frameImgEl.style.display !== 'none') {
+      openImageFullscreenModal(frameImgEl.src, `معاينة لقطة الفريم - شاشة كاملة`);
+    } else if (currentVideoInfo?.thumbnail) {
+      openImageFullscreenModal(currentVideoInfo.thumbnail, 'معاينة اللقطة - شاشة كاملة');
+    }
+  });
+
+  document.getElementById('closeFullscreenModalBtn')?.addEventListener('click', closeImageFullscreenModal);
+  document.getElementById('imageFullscreenModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'imageFullscreenModal') closeImageFullscreenModal();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeImageFullscreenModal();
+  });
+
+  document.querySelectorAll('.aspect-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      imageAspect = pill.dataset.aspect;
+      document.querySelectorAll('.aspect-pill').forEach((item) => item.classList.remove('active'));
+      pill.classList.add('active');
+      applyAspectToPreviewScreens();
+    });
+  });
+
+  document.querySelectorAll('.mask-shape-pill').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      maskShape = pill.dataset.shape;
+      document.querySelectorAll('.mask-shape-pill').forEach((item) => item.classList.remove('active'));
+      pill.classList.add('active');
+      updateMaskShapeUI();
+    });
+  });
+
+  ['customAspectWidth', 'customAspectHeight'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', () => {
+        if (imageAspect === 'custom') {
+          applyAspectToPreviewScreens();
+        }
+      });
+    }
+  });
+
+  
+  }
 
 // Show status
 function hideClipboardPrompt() {
@@ -961,7 +1296,6 @@ function displayVideoInfo(info, { preserveStudioMode = false } = {}) {
   }
 
   elements.studioPanel.classList.add('show');
-  populateDubLanguages(info);
 
   if (preserveStudioMode && storedFormats) {
     refreshUnifiedQualityGrid(true);
@@ -1125,15 +1459,6 @@ function selectQuality(element, type, format, grid) {
 }
 
 function getDownloadTypeLabel(type, mode = studioMode) {
-  if (mode === 'dub') {
-    if (dubMode === 'ai') {
-      return `${t('typeAiDubbed')} (${getLangDisplayName(dubLanguage)})`;
-    }
-    if (dubMode === 'subtitles') {
-      return `${t('typeSubs')} (${getLangDisplayName(dubLanguage)})`;
-    }
-    return `${t('typeDubbed')} (${getLangDisplayName(dubLanguage)})`;
-  }
   if (mode === 'image') {
     return imageMode === 'thumbnail' ? t('typeThumbnail') : t('typeFrame');
   }
@@ -1164,6 +1489,11 @@ async function startDownload() {
       imageMode,
       imageFormat,
       frameTime,
+      aspectRatio: imageAspect,
+      maskShape,
+      cropPos: cropPositionPercent,
+      customWidth: parseInt(document.getElementById('customAspectWidth')?.value) || 1080,
+      customHeight: parseInt(document.getElementById('customAspectHeight')?.value) || 1080,
       thumbnailUrl: currentVideoInfo.thumbnail,
       filename
     };
@@ -1193,40 +1523,6 @@ async function startDownload() {
     };
     historyType = clipType;
     progressMessage = `${t('progressClipExport')} ${formatShortTime(clipStart)} → ${formatShortTime(clipEnd)}...`;
-  } else if (studioMode === 'dub') {
-    if (!selectedFormat || !selectedHeight) {
-      showStatus(t('errSelectQuality'), 'error');
-      return;
-    }
-
-    if (!dubLanguage) {
-      showStatus(t('errSelectDubLang'), 'error');
-      return;
-    }
-
-    downloadOptions = {
-      mode: 'dub',
-      dubMode,
-      dubLanguage,
-      dubVoice,
-      dubSpeed,
-      dubSyncGap,
-      originalLanguage: currentVideoInfo.originalLanguage,
-      format: selectedFormat,
-      height: selectedHeight,
-      type: 'video-only',
-      filename: `${filename}.mp4`
-    };
-    historyType = dubMode === 'subtitles' ? 'subtitles' : (dubMode === 'ai' ? 'ai-dubbed' : (dubMode === 'dub_and_sub' ? 'dub-and-sub' : 'dubbed'));
-    if (dubMode === 'dub_and_sub') {
-      progressMessage = `جاري الدبلجة الصوتية والترجمة النصية المدمجة مع حفظ الموسيقى (${getLangDisplayName(dubLanguage)})...`;
-    } else if (dubMode === 'ai') {
-      progressMessage = `${t('progressAiDub')} (${getLangDisplayName(dubLanguage)})...`;
-    } else if (dubMode === 'subtitles') {
-      progressMessage = `${t('progressSubs')} (${getLangDisplayName(dubLanguage)})...`;
-    } else {
-      progressMessage = `${t('progressDub')} (${getLangDisplayName(dubLanguage)})...`;
-    }
   } else {
     if (!selectedFormat || ((selectedType === 'video-audio' || selectedType === 'video-only') && !selectedHeight)) {
       showStatus(t('errSelectQuality'), 'error');
@@ -1471,9 +1767,48 @@ function navigateTo(section) {
     downloader: t('pageDownloader'),
     history: t('pageHistory'),
     platforms: t('pagePlatforms'),
+    tools: t('pageTools'),
     settings: t('pageSettings')
   };
   elements.pageTitle.textContent = titles[section] || 'VM';
+  if (section === 'settings') initEnhancedSettings();
+}
+
+function initEnhancedSettings() {
+  // 1. Download Scheduler in Settings
+  const scheduleBtn = document.getElementById('settingStartScheduleBtn');
+  const scheduleTime = document.getElementById('settingScheduleTime');
+  const scheduleDelay = document.getElementById('settingScheduleDelayMin');
+  const scheduleStatus = document.getElementById('settingScheduleStatus');
+
+  if (scheduleBtn && !scheduleBtn.dataset.bound) {
+    scheduleBtn.dataset.bound = 'true';
+    scheduleBtn.addEventListener('click', () => {
+      let delayMs = 0;
+      if (scheduleTime?.value) {
+        const [h, m] = scheduleTime.value.split(':').map(Number);
+        const now = new Date();
+        const target = new Date();
+        target.setHours(h, m, 0, 0);
+        if (target <= now) target.setDate(target.getDate() + 1);
+        delayMs = target.getTime() - now.getTime();
+      } else if (scheduleDelay?.value) {
+        delayMs = Number(scheduleDelay.value) * 60 * 1000;
+      }
+
+      if (delayMs <= 0) {
+        alert('الرجاء تحديد وقت بدء أو تحديد الدقائق المتبقية');
+        return;
+      }
+
+      const startInMin = Math.round(delayMs / 60000);
+      if (scheduleStatus) scheduleStatus.textContent = `تم تفعيل الجدولة بنجاح: سيبدأ التحميل التلقائي بعد ${startInMin} دقيقة تلقائياً ✓`;
+      setTimeout(() => {
+        if (typeof startBatchProcessing === 'function') startBatchProcessing();
+      }, delayMs);
+    });
+  }
+
 }
 
 // Load platforms
@@ -1539,11 +1874,6 @@ function clearAll() {
   selectedType = 'video-audio';
   selectedHeight = 'best';
   selectedHasAudio = true;
-  dubMode = 'dub';
-  dubLanguage = 'ar';
-  elements.dubModeCards?.forEach((card, index) => {
-    card.classList.toggle('active', index === 0);
-  });
   updateWelcomePanel();
 }
 
@@ -1558,9 +1888,6 @@ function getPreviewSummaryText() {
     clampClipRange();
     const clipTypeLabel = getActiveDownloadType() === 'video-only' ? 'مقطع بدون صوت' : 'مقطع مع صوت';
     return `استوديو الإنتاج [قص مقطع: ${formatShortTime(clipStart)} ← ${formatShortTime(clipEnd)} | ${clipTypeLabel}]`;
-  }
-  if (studioMode === 'dub') {
-    return `استوديو الإنتاج [دبلجة وترجمة: ${getLangDisplayName(dubLanguage)} | صوت: ${dubVoice} | سرعة: ${dubSpeed}x]`;
   }
   if (studioMode === 'image') {
     if (imageMode === 'frame') {
@@ -1651,27 +1978,6 @@ async function toggleVideoPreview(forceRefresh = false) {
           }
         }
 
-        // 3. Production Studio: Dubbing & Subtitles Mode
-        if (studioMode === 'dub') {
-          window.electronAPI.getPreviewSubtitles({ url, language: dubLanguage }).then((subRes) => {
-            if (subRes.success && subRes.vttContent) {
-              const blob = new Blob([subRes.vttContent], { type: 'text/vtt;charset=utf-8' });
-              currentSubBlobUrl = URL.createObjectURL(blob);
-              const track = document.createElement('track');
-              track.kind = 'subtitles';
-              track.label = `ترجمة (${getLangDisplayName(dubLanguage)})`;
-              track.srclang = dubLanguage.split('-')[0];
-              track.src = currentSubBlobUrl;
-              track.default = true;
-              elements.previewVideoEl.appendChild(track);
-
-              if (elements.previewVideoEl.textTracks && elements.previewVideoEl.textTracks[0]) {
-                elements.previewVideoEl.textTracks[0].mode = 'showing';
-              }
-              showStatus(`تم تطبيق تعديلات الدبلجة والترجمة (${getLangDisplayName(dubLanguage)}) على المعاينة`, 'success');
-            }
-          }).catch(() => {});
-        }
 
         if (forceRefresh) {
           elements.previewVideoEl.load();
@@ -1691,9 +1997,250 @@ async function toggleVideoPreview(forceRefresh = false) {
 }
 
 // Batch Queue
+let batchSelectedIds = new Set();
+let showBulkEditor = false;
+
+function getSelectedBatchItems() {
+  return downloadQueue.filter((q) => batchSelectedIds.has(q.id));
+}
+
+function syncBatchSelection() {
+  const validIds = new Set(downloadQueue.map((q) => q.id));
+  batchSelectedIds = new Set([...batchSelectedIds].filter((id) => validIds.has(id)));
+  if (batchSelectedIds.size === 0) showBulkEditor = false;
+}
+
+window.toggleBatchItemSelect = function(itemId, event) {
+  if (event) event.stopPropagation();
+  if (batchSelectedIds.has(itemId)) batchSelectedIds.delete(itemId);
+  else batchSelectedIds.add(itemId);
+  if (batchSelectedIds.size === 0) showBulkEditor = false;
+  updateQueueUI();
+};
+
+window.toggleSelectAllBatch = function(event) {
+  if (event) event.stopPropagation();
+  const allIds = downloadQueue.map((q) => q.id);
+  if (batchSelectedIds.size === allIds.length && allIds.length > 0) {
+    batchSelectedIds.clear();
+    showBulkEditor = false;
+  } else {
+    batchSelectedIds = new Set(allIds);
+  }
+  updateQueueUI();
+};
+
+window.clearBatchSelection = function(event) {
+  if (event) event.stopPropagation();
+  batchSelectedIds.clear();
+  showBulkEditor = false;
+  updateQueueUI();
+};
+
+window.moveBatchItem = function(itemId, direction, event) {
+  if (event) event.stopPropagation();
+  const idx = downloadQueue.findIndex((q) => q.id === itemId);
+  if (idx < 0) return;
+  const newIdx = idx + direction;
+  if (newIdx < 0 || newIdx >= downloadQueue.length) return;
+  const item = downloadQueue[idx];
+  if (item.status === 'downloading' || downloadQueue[newIdx].status === 'downloading') {
+    showStatus('لا يمكن نقل رابط قيد التحميل حالياً', 'info');
+    return;
+  }
+  downloadQueue[idx] = downloadQueue[newIdx];
+  downloadQueue[newIdx] = item;
+  updateQueueUI();
+};
+
+window.moveBatchItemToFirst = function(itemId, event) {
+  if (event) event.stopPropagation();
+  const idx = downloadQueue.findIndex((q) => q.id === itemId);
+  if (idx < 0) return;
+  const item = downloadQueue[idx];
+  if (item.status !== 'pending') {
+    showStatus('يمكن تقديم رابط بانتظار التحميل فقط', 'info');
+    return;
+  }
+  downloadQueue.splice(idx, 1);
+  const insertAt = downloadQueue.findIndex((q) => q.status === 'pending');
+  if (insertAt < 0) downloadQueue.push(item);
+  else downloadQueue.splice(insertAt, 0, item);
+  updateQueueUI();
+  showStatus('① سيتم تحميل هذا الرابط أولاً', 'success');
+};
+
+window.moveSelectedBatchToFirst = function(event) {
+  if (event) event.stopPropagation();
+  const selected = getSelectedBatchItems().filter((q) => q.status === 'pending');
+  if (selected.length === 0) {
+    showStatus('حدّد روابط بانتظار التحميل لتقديمها', 'info');
+    return;
+  }
+  // أبقِ ترتيب المحدد كما هو، وضعه في مقدمة قائمة الانتظار
+  const selectedIds = new Set(selected.map((q) => q.id));
+  const rest = downloadQueue.filter((q) => !selectedIds.has(q.id));
+  const firstPending = rest.findIndex((q) => q.status === 'pending');
+  if (firstPending < 0) {
+    downloadQueue = [...rest, ...selected];
+  } else {
+    downloadQueue = [
+      ...rest.slice(0, firstPending),
+      ...selected,
+      ...rest.slice(firstPending)
+    ];
+  }
+  updateQueueUI();
+  showStatus(`① تم تقديم ${selected.length} رابط للتحميل أولاً`, 'success');
+};
+
+window.deleteSelectedBatchItems = function(event) {
+  if (event) event.stopPropagation();
+  if (batchSelectedIds.size === 0) return;
+  const before = downloadQueue.length;
+  downloadQueue = downloadQueue.filter((q) => !batchSelectedIds.has(q.id) || q.status === 'downloading');
+  const removed = before - downloadQueue.length;
+  syncBatchSelection();
+  updateQueueUI();
+  showStatus(removed > 0 ? `تم حذف ${removed} رابط من القائمة` : 'لا يمكن حذف رابط قيد التحميل', 'info');
+};
+
+window.toggleBulkEditor = function(event) {
+  if (event) event.stopPropagation();
+  if (batchSelectedIds.size === 0) {
+    showStatus('حدّد رابطاً واحداً أو أكثر للتعديل', 'info');
+    return;
+  }
+  showBulkEditor = !showBulkEditor;
+  // أغلق محررات الفردي عند فتح الجماعي
+  if (showBulkEditor) {
+    downloadQueue.forEach((q) => { q.showEditor = false; });
+  }
+  updateQueueUI();
+};
+
+window.saveBulkBatchEditor = function(event) {
+  if (event) event.stopPropagation();
+  const selected = getSelectedBatchItems();
+  if (selected.length === 0) return;
+
+  const qualitySelect = document.getElementById('bulk_edit_quality');
+  const typeSelect = document.getElementById('bulk_edit_type');
+  const filenameInput = document.getElementById('bulk_edit_filename');
+  const applyQuality = document.getElementById('bulk_apply_quality')?.checked !== false;
+  const applyType = document.getElementById('bulk_apply_type')?.checked !== false;
+  const applyFilename = document.getElementById('bulk_apply_filename')?.checked === true;
+
+  selected.forEach((item) => {
+    if (item.status === 'downloading' || item.status === 'done') return;
+    if (applyQuality && qualitySelect) item.quality = qualitySelect.value;
+    if (applyType && typeSelect) item.type = typeSelect.value;
+    if (applyFilename && filenameInput) item.filename = filenameInput.value.trim();
+  });
+
+  showBulkEditor = false;
+  updateQueueUI();
+  showStatus(`تم تطبيق الإعدادات على ${selected.length} رابط`, 'success');
+};
+
+window.toggleBatchItemEditor = function(itemId, event) {
+  if (event) event.stopPropagation();
+  const item = downloadQueue.find((q) => q.id === itemId || q.url === itemId);
+  if (item) {
+    showBulkEditor = false;
+    const opening = !item.showEditor;
+    downloadQueue.forEach((q) => { q.showEditor = false; });
+    item.showEditor = opening;
+    updateQueueUI();
+  }
+};
+
+window.removeBatchQueueItem = function(itemId, event) {
+  if (event) event.stopPropagation();
+  const item = downloadQueue.find((q) => q.id === itemId);
+  if (item?.status === 'downloading') {
+    showStatus('لا يمكن حذف رابط قيد التحميل', 'info');
+    return;
+  }
+  downloadQueue = downloadQueue.filter((q) => q.id !== itemId && q.url !== itemId);
+  batchSelectedIds.delete(itemId);
+  syncBatchSelection();
+  updateQueueUI();
+  showStatus('تم حذف الرابط من القائمة', 'info');
+};
+
+window.saveBatchItemEditor = function(itemId, event) {
+  if (event) event.stopPropagation();
+  const item = downloadQueue.find((q) => q.id === itemId || q.url === itemId);
+  if (!item) return;
+
+  const urlInput = document.getElementById(`edit_url_${itemId}`);
+  const qualitySelect = document.getElementById(`edit_quality_${itemId}`);
+  const typeSelect = document.getElementById(`edit_type_${itemId}`);
+  const filenameInput = document.getElementById(`edit_filename_${itemId}`);
+
+  if (urlInput && urlInput.value.trim()) {
+    item.url = urlInput.value.trim();
+  }
+  if (qualitySelect) item.quality = qualitySelect.value;
+  if (typeSelect) item.type = typeSelect.value;
+  if (filenameInput) item.filename = filenameInput.value.trim();
+
+  item.showEditor = false;
+  updateQueueUI();
+  showStatus('تم حفظ إعدادات الرابط بنجاح', 'success');
+};
+
+function renderBulkEditorHtml() {
+  if (!showBulkEditor || batchSelectedIds.size === 0) return '';
+  const count = batchSelectedIds.size;
+  return `
+    <div class="batch-bulk-editor" onclick="event.stopPropagation()">
+      <div class="batch-bulk-editor-header">
+        <strong><i class="fas fa-sliders-h"></i> تعديل إعدادات ${count} رابط محدد</strong>
+        <button type="button" class="btn-batch-icon" onclick="toggleBulkEditor(event)" title="إغلاق"><i class="fas fa-times"></i></button>
+      </div>
+      <p class="batch-bulk-hint">طبّق الجودة / النوع على المحدد — يمكنك اختيار ما يُطبَّق فقط</p>
+      <div class="batch-bulk-grid">
+        <label class="batch-bulk-field">
+          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_quality" checked> الجودة</span>
+          <select id="bulk_edit_quality">
+            <option value="best">أفضل جودة (Best HD)</option>
+            <option value="1080">1080p Full HD</option>
+            <option value="720">720p HD</option>
+            <option value="480">480p</option>
+            <option value="360">360p</option>
+          </select>
+        </label>
+        <label class="batch-bulk-field">
+          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_type" checked> نوع التحميل</span>
+          <select id="bulk_edit_type">
+            <option value="video-audio">فيديو + صوت</option>
+            <option value="video-only">فيديو فقط</option>
+            <option value="audio">صوت MP3</option>
+          </select>
+        </label>
+        <label class="batch-bulk-field batch-bulk-field-wide">
+          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_filename"> اسم ملف موحّد (اختياري)</span>
+          <input type="text" id="bulk_edit_filename" placeholder="يُطبَّق على الكل إن تم التفعيل...">
+        </label>
+      </div>
+      <div class="batch-bulk-actions">
+        <button type="button" class="btn-batch-apply-bulk" onclick="saveBulkBatchEditor(event)">
+          <i class="fas fa-check"></i> تطبيق على المحدد (${count})
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 function updateQueueUI() {
   if (!elements.batchQueueList) return;
+  syncBatchSelection();
+
   if (downloadQueue.length === 0) {
+    batchSelectedIds.clear();
+    showBulkEditor = false;
     elements.batchQueueList.innerHTML = `<p class="batch-desc">${t('batchDesc')}</p>`;
     if (elements.startBatchBtn) elements.startBatchBtn.disabled = true;
     return;
@@ -1701,18 +2248,119 @@ function updateQueueUI() {
 
   const pendingCount = downloadQueue.filter((q) => q.status === 'pending').length;
   const doneCount = downloadQueue.filter((q) => q.status === 'done').length;
+  const selectedCount = batchSelectedIds.size;
+  const allSelected = selectedCount === downloadQueue.length;
   if (elements.startBatchBtn) elements.startBatchBtn.disabled = isQueueProcessing || pendingCount === 0;
 
-  const headerHtml = `<div class="batch-queue-summary" style="margin-bottom: 10px; font-size: 13px; color: var(--primary-light); font-weight: 600;">سلسلة الروابط بدون سقف: إجمالي <strong>${downloadQueue.length} فيديو</strong> (اكتمل: ${doneCount} | المتبقي: ${pendingCount})</div>`;
-
-  const itemsHtml = downloadQueue.map((item, idx) => `
-    <div class="batch-item ${item.status}">
-      <span class="batch-item-url" title="${escapeHtml(item.url)}">${idx + 1}. ${escapeHtml(item.url)}</span>
-      <span class="batch-item-status ${item.status}">
-        ${item.status === 'pending' ? 'انتظار' : item.status === 'downloading' ? 'جاري التحميل...' : item.status === 'done' ? 'اكتمل ✓' : 'خطأ ✗'}
-      </span>
+  const headerHtml = `
+    <div class="batch-queue-summary">
+      <span>سلسلة الروابط: <strong>${downloadQueue.length}</strong> (اكتمل: ${doneCount} | المتبقي: ${pendingCount})</span>
+      <span class="batch-queue-hint">حدّد روابط ← رتّب / عدّل / قدّم للتحميل أولاً</span>
     </div>
-  `).join('');
+    <div class="batch-selection-toolbar">
+      <label class="batch-select-all">
+        <input type="checkbox" ${allSelected ? 'checked' : ''} onchange="toggleSelectAllBatch(event)" title="تحديد الكل">
+        <span>${allSelected ? 'إلغاء الكل' : 'تحديد الكل'}</span>
+      </label>
+      <span class="batch-selected-count">${selectedCount > 0 ? `محدد: ${selectedCount}` : 'لا تحديد'}</span>
+      <div class="batch-toolbar-actions">
+        <button type="button" class="btn-batch-tool" onclick="moveSelectedBatchToFirst(event)" ${selectedCount === 0 ? 'disabled' : ''} title="تحميل المحدد أولاً">
+          <i class="fas fa-angle-double-up"></i> تحميل أولاً
+        </button>
+        <button type="button" class="btn-batch-tool btn-batch-tool-edit" onclick="toggleBulkEditor(event)" ${selectedCount === 0 ? 'disabled' : ''} title="تعديل إعدادات المحدد">
+          <i class="fas fa-sliders-h"></i> تعديل المحدد
+        </button>
+        <button type="button" class="btn-batch-tool btn-batch-tool-danger" onclick="deleteSelectedBatchItems(event)" ${selectedCount === 0 ? 'disabled' : ''} title="حذف المحدد">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+        <button type="button" class="btn-batch-tool" onclick="clearBatchSelection(event)" ${selectedCount === 0 ? 'disabled' : ''} title="إلغاء التحديد">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+    ${renderBulkEditorHtml()}
+  `;
+
+  const itemsHtml = downloadQueue.map((item, idx) => {
+    const statusText = item.status === 'pending' ? 'انتظار' : (item.status === 'downloading' ? 'جاري التحميل...' : (item.status === 'done' ? 'اكتمل ✓' : 'خطأ ✗'));
+    const isCustomized = (item.quality && item.quality !== 'best') || (item.type && item.type !== 'video-audio') || item.filename;
+    const badgeText = isCustomized ? ` [${item.type === 'audio' ? 'MP3' : item.quality + 'p'}]` : '';
+    const isSelected = batchSelectedIds.has(item.id);
+    const isNext = item.status === 'pending' && downloadQueue.find((q) => q.status === 'pending')?.id === item.id;
+    const canMoveUp = idx > 0 && item.status !== 'downloading' && downloadQueue[idx - 1].status !== 'downloading';
+    const canMoveDown = idx < downloadQueue.length - 1 && item.status !== 'downloading' && downloadQueue[idx + 1].status !== 'downloading';
+
+    return `
+      <div class="batch-item-wrapper ${isSelected ? 'selected' : ''} ${isNext ? 'is-next' : ''}">
+        <div class="batch-item ${item.status} ${isSelected ? 'selected' : ''}">
+          <div class="batch-item-left">
+            <input type="checkbox" class="batch-item-check" ${isSelected ? 'checked' : ''} onclick="toggleBatchItemSelect('${item.id}', event)" title="تحديد">
+            <div class="batch-reorder-btns">
+              <button type="button" class="btn-batch-reorder" onclick="moveBatchItemToFirst('${item.id}', event)" title="تحميل أولاً" ${item.status !== 'pending' ? 'disabled' : ''}><i class="fas fa-angle-double-up"></i></button>
+              <button type="button" class="btn-batch-reorder" onclick="moveBatchItem('${item.id}', -1, event)" title="أعلى" ${!canMoveUp ? 'disabled' : ''}><i class="fas fa-chevron-up"></i></button>
+              <button type="button" class="btn-batch-reorder" onclick="moveBatchItem('${item.id}', 1, event)" title="أسفل" ${!canMoveDown ? 'disabled' : ''}><i class="fas fa-chevron-down"></i></button>
+            </div>
+            <span class="batch-item-num">${idx + 1}${isNext ? '<small>التالي</small>' : ''}</span>
+            <span class="batch-item-url" title="${escapeHtml(item.url)}" onclick="toggleBatchItemSelect('${item.id}', event)">${escapeHtml(item.url)}<strong class="batch-item-badge">${badgeText}</strong></span>
+          </div>
+          <div class="batch-item-right-actions">
+            <span class="batch-item-status ${item.status}">${statusText}</span>
+            <button type="button" class="btn-batch-mini-edit" onclick="toggleBatchItemEditor('${item.id}', event)" title="إعدادات هذا الرابط">
+              <i class="fas fa-cog"></i>
+            </button>
+            <button type="button" class="btn-batch-mini-delete" onclick="removeBatchQueueItem('${item.id}', event)" title="حذف" ${item.status === 'downloading' ? 'disabled' : ''}>
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        </div>
+
+        ${item.showEditor ? `
+          <div class="batch-item-editor" onclick="event.stopPropagation()">
+            <div class="batch-item-editor-header">
+              <strong><i class="fas fa-sliders-h"></i> إعدادات الرابط رقم ${idx + 1}</strong>
+              <button type="button" class="btn-batch-icon" onclick="toggleBatchItemEditor('${item.id}', event)"><i class="fas fa-times"></i></button>
+            </div>
+            <div>
+              <label class="batch-editor-label">تعديل الرابط:</label>
+              <input type="text" id="edit_url_${item.id}" value="${escapeHtml(item.url)}" class="batch-editor-input">
+            </div>
+            <div class="batch-editor-row">
+              <div>
+                <label class="batch-editor-label">الجودة:</label>
+                <select id="edit_quality_${item.id}" class="batch-editor-input">
+                  <option value="best" ${(item.quality || 'best') === 'best' ? 'selected' : ''}>أفضل جودة (Best HD)</option>
+                  <option value="1080" ${item.quality === '1080' ? 'selected' : ''}>1080p Full HD</option>
+                  <option value="720" ${item.quality === '720' ? 'selected' : ''}>720p HD</option>
+                  <option value="480" ${item.quality === '480' ? 'selected' : ''}>480p</option>
+                  <option value="360" ${item.quality === '360' ? 'selected' : ''}>360p</option>
+                </select>
+              </div>
+              <div>
+                <label class="batch-editor-label">نوع التحميل:</label>
+                <select id="edit_type_${item.id}" class="batch-editor-input">
+                  <option value="video-audio" ${(item.type || 'video-audio') === 'video-audio' ? 'selected' : ''}>فيديو + صوت</option>
+                  <option value="video-only" ${item.type === 'video-only' ? 'selected' : ''}>فيديو فقط</option>
+                  <option value="audio" ${item.type === 'audio' ? 'selected' : ''}>صوت MP3</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="batch-editor-label">اسم الملف المخصص (اختياري):</label>
+              <input type="text" id="edit_filename_${item.id}" value="${escapeHtml(item.filename || '')}" placeholder="اسم الملف..." class="batch-editor-input">
+            </div>
+            <div class="batch-editor-footer">
+              <button type="button" onclick="moveBatchItemToFirst('${item.id}', event)" class="btn-batch-mini-edit" ${item.status !== 'pending' ? 'disabled' : ''}>
+                <i class="fas fa-angle-double-up"></i> تحميل أولاً
+              </button>
+              <button type="button" onclick="saveBatchItemEditor('${item.id}', event)" class="btn-batch-save">
+                <i class="fas fa-check"></i> حفظ
+              </button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
 
   elements.batchQueueList.innerHTML = headerHtml + itemsHtml;
 }
@@ -1727,7 +2375,15 @@ function addUrlsToQueue() {
       const parsed = new URL(line.startsWith('http') ? line : `https://${line}`);
       const urlStr = parsed.toString();
       if (!downloadQueue.some((q) => q.url === urlStr)) {
-        downloadQueue.push({ url: urlStr, status: 'pending' });
+        downloadQueue.push({
+          id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+          url: urlStr,
+          status: 'pending',
+          quality: 'best',
+          type: 'video-audio',
+          filename: '',
+          showEditor: false
+        });
         added += 1;
       }
     } catch {
@@ -1762,10 +2418,158 @@ async function pasteAndAddUrlsToQueue() {
 }
 
 function clearBatchQueue() {
+  if (downloadQueue.some((q) => q.status === 'downloading')) {
+    showStatus('انتظر انتهاء التحميل الحالي قبل إفراغ القائمة', 'info');
+    return;
+  }
   downloadQueue = [];
+  batchSelectedIds.clear();
+  showBulkEditor = false;
   updateQueueUI();
   showStatus('تم إفراغ قائمة التحميل المتتالي', 'info');
 }
+
+// ─── Auto-Paste to Batch Queue ────────────────────────────────────────────────
+const AUTO_PASTE_BATCH_KEY = 'vm_auto_paste_batch';
+let autoPasteBatchEnabled = localStorage.getItem(AUTO_PASTE_BATCH_KEY) === 'true';
+let autoPasteToastTimer = null;
+let autoPasteEventsBound = false;
+
+function showAutoPasteToast(url, count = 1) {
+  let toast = document.getElementById('autoPasteToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'autoPasteToast';
+    toast.className = 'auto-paste-toast';
+    toast.innerHTML = `
+      <i class="fas fa-clipboard-check"></i>
+      <span id="autoPasteToastMsg">تمت الإضافة تلقائياً للقائمة</span>
+      <span class="toast-url" id="autoPasteToastUrl"></span>`;
+    document.body.appendChild(toast);
+  }
+  const msgEl = document.getElementById('autoPasteToastMsg');
+  const urlEl = document.getElementById('autoPasteToastUrl');
+  if (msgEl) {
+    msgEl.textContent = count > 1
+      ? `تمت إضافة ${count} روابط تلقائياً للقائمة`
+      : 'تمت الإضافة تلقائياً للقائمة';
+  }
+  if (urlEl) urlEl.textContent = count > 1 ? '' : (url || '');
+  toast.classList.add('show');
+  clearTimeout(autoPasteToastTimer);
+  autoPasteToastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+function updateAutoPasteBtn() {
+  const btn    = document.getElementById('autoPasteBatchBtn');
+  const badge  = document.getElementById('autoPasteStatusBadge');
+  const icon   = document.getElementById('autoPasteIcon');
+  if (!btn) return;
+
+  if (autoPasteBatchEnabled) {
+    btn.classList.add('active');
+    if (badge)  badge.textContent = 'ON';
+    if (icon)   { icon.className = 'fas fa-clipboard-check'; }
+  } else {
+    btn.classList.remove('active');
+    if (badge)  badge.textContent = 'OFF';
+    if (icon)   { icon.className = 'fas fa-clipboard'; }
+  }
+}
+
+function addAutoPasteUrlsToQueue(urls) {
+  if (!autoPasteBatchEnabled || !Array.isArray(urls) || urls.length === 0) return;
+
+  let added = 0;
+  let lastUrl = '';
+
+  for (const raw of urls) {
+    try {
+      const urlStr = new URL(String(raw).trim()).toString();
+      if (downloadQueue.some((q) => q.url === urlStr)) continue;
+
+      downloadQueue.push({
+        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        url: urlStr,
+        status: 'pending',
+        quality: 'best',
+        type: 'video-audio',
+        filename: '',
+        showEditor: false
+      });
+      added += 1;
+      lastUrl = urlStr;
+    } catch {
+      // skip invalid
+    }
+  }
+
+  if (added > 0) {
+    updateQueueUI();
+    showAutoPasteToast(lastUrl, added);
+
+    const panel = document.getElementById('batchQueuePanel');
+    if (panel?.classList.contains('hidden')) {
+      panel.classList.remove('hidden');
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+}
+
+function bindAutoPasteEvents() {
+  if (autoPasteEventsBound) return;
+  autoPasteEventsBound = true;
+
+  window.electronAPI.onBatchAutoPasteUrls?.((data) => {
+    if (!autoPasteBatchEnabled) return;
+    addAutoPasteUrlsToQueue(data?.urls || []);
+  });
+}
+
+async function enableAutoPasteBatch(showMsg = true) {
+  autoPasteBatchEnabled = true;
+  localStorage.setItem(AUTO_PASTE_BATCH_KEY, 'true');
+  updateAutoPasteBtn();
+  bindAutoPasteEvents();
+  // المراقبة السريعة في العملية الرئيسية — تتجاهل الحافظة الحالية
+  await window.electronAPI.setBatchAutoPaste?.(true);
+  if (showMsg) {
+    showStatus('✅ اللصق التلقائي مُفعَّل — انسخ الروابط بسرعة وسيُضاف كل واحد فوراً', 'success');
+  }
+}
+
+async function disableAutoPasteBatch(showMsg = true) {
+  autoPasteBatchEnabled = false;
+  localStorage.setItem(AUTO_PASTE_BATCH_KEY, 'false');
+  updateAutoPasteBtn();
+  await window.electronAPI.setBatchAutoPaste?.(false);
+  if (showMsg) {
+    showStatus('⏸ اللصق التلقائي متوقف', 'info');
+  }
+}
+
+async function toggleAutoPasteBatch() {
+  if (autoPasteBatchEnabled) {
+    await disableAutoPasteBatch(true);
+  } else {
+    await enableAutoPasteBatch(true);
+  }
+}
+
+async function initAutoPasteBatch() {
+  updateAutoPasteBtn();
+  bindAutoPasteEvents();
+  if (autoPasteBatchEnabled) {
+    await window.electronAPI.setBatchAutoPaste?.(true);
+  } else {
+    await window.electronAPI.setBatchAutoPaste?.(false);
+  }
+}
+
+// ربط زر اللصق التلقائي
+document.getElementById('autoPasteBatchBtn')?.addEventListener('click', toggleAutoPasteBatch);
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function startBatchProcessing() {
   if (isQueueProcessing || downloadQueue.length === 0) return;
@@ -1788,9 +2592,33 @@ async function processNextBatchItem() {
 
   try {
     elements.videoUrl.value = item.url;
-    await fetchVideoInfo();
-    await startDownload();
-    item.status = 'done';
+    const customType = item.type || selectedType || 'video-audio';
+    const customHeight = item.quality || selectedHeight || 'best';
+    const ext = customType === 'audio' ? '.mp3' : '.mp4';
+    const finalFilename = item.filename ? `${item.filename}${ext}` : undefined;
+
+    const options = {
+      mode: 'full',
+      format: null,
+      height: customHeight,
+      type: customType,
+      hasAudio: customType !== 'video-only',
+      filename: finalFilename,
+      turbo: isTurboEnabled(),
+      audioEnhance: isAudioEnhanceEnabled(),
+      downloadDir: getStoredDownloadPath()
+    };
+
+    const result = await window.electronAPI.downloadVideo({
+      url: item.url,
+      options: options
+    });
+
+    if (result.success) {
+      item.status = 'done';
+    } else {
+      item.status = 'error';
+    }
   } catch (err) {
     console.error('Batch item error:', err);
     item.status = 'error';
@@ -1841,17 +2669,8 @@ elements.openLastDownloadSidebarBtn?.addEventListener('click', () => {
   }
 });
 
-elements.dubVoiceSelect?.addEventListener('change', () => {
-  dubVoice = elements.dubVoiceSelect.value;
-});
 
-elements.dubSpeedSelect?.addEventListener('change', () => {
-  dubSpeed = elements.dubSpeedSelect.value;
-});
 
-elements.dubSyncSelect?.addEventListener('change', () => {
-  dubSyncGap = elements.dubSyncSelect.value;
-});
 
 elements.playPreviewBtn?.addEventListener('click', () => toggleVideoPreview(false));
 elements.refreshPreviewBtn?.addEventListener('click', () => toggleVideoPreview(true));
@@ -1936,7 +2755,8 @@ function bindClipboardEvents() {
   elements.clipboardDismissBtn?.addEventListener('click', dismissClipboardUrl);
 
   window.electronAPI.onClipboardUrlDetected?.((data) => {
-    if (!isClipboardWatchEnabled() || !data?.url) {
+    // أثناء اللصق التلقائي للسلسلة لا نعرض نافذة البحث من الحافظة
+    if (autoPasteBatchEnabled || !isClipboardWatchEnabled() || !data?.url) {
       return;
     }
     showClipboardPrompt(data.url);
@@ -2001,6 +2821,19 @@ function bindSettingsEvents() {
     });
   }
 
+  const languageSelect = document.getElementById('languageSelect');
+  if (languageSelect) {
+    languageSelect.value = window.i18n?.getLanguage?.() || 'ar';
+    languageSelect.addEventListener('change', () => {
+      const newLang = languageSelect.value;
+      if (window.i18n?.setLanguage) {
+        window.i18n.setLanguage(newLang);
+        refreshUiAfterLanguageChange();
+        showStatus(t('langChanged'), 'success');
+      }
+    });
+  }
+
   if (clearCacheBtn) {
     clearCacheBtn.addEventListener('click', async () => {
       clientInfoCache.clear();
@@ -2014,7 +2847,6 @@ function refreshUiAfterLanguageChange() {
   navigateTo(currentSection);
   updateDownloadButtonText();
   updateQualityHint();
-  updateDubAvailability();
 
   if (currentVideoInfo) {
     displayVideoInfo(currentVideoInfo, { preserveStudioMode: true });
@@ -2060,6 +2892,9 @@ async function initializeApp() {
   await window.electronAPI.setClipboardWatch?.(isClipboardWatchEnabled());
   await loadDefaultDownloadPath();
   loadPlatforms();
+
+  // تهيئة اللصق التلقائي للسلسلة (يتجاهل روابط الحافظة الموجودة قبل التفعيل)
+  await initAutoPasteBatch();
   showStatus(t('initApp'), 'info');
 
   if (elements.statusMessage) {

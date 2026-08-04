@@ -15,13 +15,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setLanguage: (lang) => ipcRenderer.invoke('set-language', lang),
   selectDownloadFolder: (currentPath) => ipcRenderer.invoke('select-download-folder', currentPath),
   getDownloadsPath: () => ipcRenderer.invoke('get-downloads-path'),
+  translateVideoOrText: (data) => ipcRenderer.invoke('translate-video-or-text', data),
   setClipboardWatch: (enabled) => ipcRenderer.invoke('set-clipboard-watch', enabled),
+  setBatchAutoPaste: (enabled) => ipcRenderer.invoke('set-batch-auto-paste', enabled),
   dismissClipboardUrl: (url) => ipcRenderer.invoke('dismiss-clipboard-url', url),
   showNotification: (data) => ipcRenderer.invoke('show-notification', data),
   onStatus: (callback) => ipcRenderer.on('status', (event, data) => callback(data)),
   onClipboardUrlDetected: (callback) => ipcRenderer.on('clipboard-url-detected', (event, data) => callback(data)),
+  onBatchAutoPasteUrls: (callback) => ipcRenderer.on('batch-auto-paste-urls', (event, data) => callback(data)),
   onAppReady: (callback) => ipcRenderer.on('app-ready', (event, data) => callback(data)),
   onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (event, data) => callback(data)),
+  onTranslateProgress: (callback) => ipcRenderer.on('translate-progress', (event, data) => callback(data)),
   onDownloadDestination: (callback) => ipcRenderer.on('download-destination', (event, data) => callback(data)),
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel)
 });

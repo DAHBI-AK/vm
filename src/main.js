@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard, Notification, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { spawn } = require('child_process');
@@ -95,6 +95,9 @@ let clipboardWatchEnabled = true;
 let lastClipboardRaw = '';
 let dismissedClipboardUrls = new Set();
 let clipboardWatchInterval = null;
+let batchAutoPasteEnabled = false;
+let batchAutoPasteLastRaw = '';
+let batchAutoPasteInterval = null;
 let ytDlpPath;
 let ytDlpReady = false;
 let ytDlpInitPromise = null;
@@ -105,7 +108,25 @@ const INFO_CACHE_TTL = 10 * 60 * 1000;
 const STREAM_CACHE_TTL = 5 * 60 * 1000;
 
 const MIN_YTDLP_SIZE = 1024 * 1024;
-const NODE_RUNTIME = path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs', 'node.exe');
+
+function resolveNodeRuntime() {
+  const paths = [
+    path.join(__dirname, '../bin/node.exe'),
+    process.execPath,
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs', 'node.exe'),
+    path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'nodejs', 'node.exe')
+  ];
+  for (const p of paths) {
+    try {
+      if (p && fs.existsSync(p) && p.toLowerCase().endsWith('.exe')) {
+        return p;
+      }
+    } catch {}
+  }
+  return null;
+}
+
+const NODE_RUNTIME = resolveNodeRuntime() || path.join(process.env.ProgramFiles || 'C:\\Program Files', 'nodejs', 'node.exe');
 
 const UI_STRINGS = {
   ar: {
@@ -356,6 +377,46 @@ function extractVideoUrlFromClipboard(text) {
   return null;
 }
 
+function extractAllUrlsFromClipboard(text) {
+  const raw = String(text || '').trim();
+  if (!raw) {
+    return [];
+  }
+
+  const urls = [];
+  const seen = new Set();
+  const matches = raw.match(/https?:\/\/[^\s<>"']+/gi) || [];
+
+  for (const match of matches) {
+    const cleaned = match.replace(/[.,;!?)\]]+$/g, '');
+    try {
+      const parsed = new URL(cleaned);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        const url = parsed.toString();
+        if (!seen.has(url)) {
+          seen.add(url);
+          urls.push(url);
+        }
+      }
+    } catch {
+      // skip invalid
+    }
+  }
+
+  if (urls.length === 0) {
+    try {
+      const parsed = new URL(raw.startsWith('http') ? raw : `https://${raw}`);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        urls.push(parsed.toString());
+      }
+    } catch {
+      // not a url
+    }
+  }
+
+  return urls;
+}
+
 function startClipboardWatcher() {
   if (clipboardWatchInterval) {
     return;
@@ -363,6 +424,10 @@ function startClipboardWatcher() {
 
   clipboardWatchInterval = setInterval(() => {
     if (!clipboardWatchEnabled || !mainWindow || mainWindow.isDestroyed()) {
+      return;
+    }
+    // أثناء اللصق التلقائي للسلسلة: لا نعرض نافذة الاكتشاف الجانبية
+    if (batchAutoPasteEnabled) {
       return;
     }
 
@@ -387,6 +452,45 @@ function startClipboardWatcher() {
   }, 1500);
 }
 
+/** مراقبة سريعة للحافظة (كل 80ms) لإضافة الروابط المنسوخة بسرعة متتالية */
+function startBatchAutoPasteWatcher() {
+  if (batchAutoPasteInterval) {
+    return;
+  }
+
+  batchAutoPasteInterval = setInterval(() => {
+    if (!batchAutoPasteEnabled || !mainWindow || mainWindow.isDestroyed()) {
+      return;
+    }
+
+    let text = '';
+    try {
+      text = clipboard.readText();
+    } catch {
+      return;
+    }
+
+    if (!text || text === batchAutoPasteLastRaw) {
+      return;
+    }
+
+    batchAutoPasteLastRaw = text;
+    const urls = extractAllUrlsFromClipboard(text);
+    if (urls.length > 0) {
+      mainWindow.webContents.send('batch-auto-paste-urls', { urls });
+    }
+  }, 80);
+}
+
+function stopBatchAutoPasteWatcher() {
+  if (batchAutoPasteInterval) {
+    clearInterval(batchAutoPasteInterval);
+    batchAutoPasteInterval = null;
+  }
+  batchAutoPasteLastRaw = '';
+  batchAutoPasteEnabled = false;
+}
+
 function showDesktopNotification({ title, body }) {
   if (!Notification.isSupported()) {
     return;
@@ -403,6 +507,9 @@ function showDesktopNotification({ title, body }) {
 }
 
 function createWindow() {
+  // إزالة شريط القوائم الافتراضي (File Edit View Window Help)
+  Menu.setApplicationMenu(null);
+
   const windowIcon = resolveAppIcon();
   const windowOptions = {
     width: 1200,
@@ -410,6 +517,7 @@ function createWindow() {
     minWidth: 900,
     minHeight: 600,
     title: APP_TITLE,
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -1051,6 +1159,97 @@ async function downloadFrameImage(url, frameTime, outputPath, imageFormat) {
   return extractFrameAtTime(streamUrl, frameTime, outputPath, imageFormat);
 }
 
+function convertImageFormatWithFFmpeg(inputPath, outputPath, targetFormat) {
+  return new Promise((resolve) => {
+    if (!fs.existsSync(inputPath)) {
+      resolve({ success: false });
+      return;
+    }
+
+    const ext = path.extname(outputPath);
+    const tempOutput = path.join(path.dirname(outputPath), `_fmt_${Date.now()}${ext}`);
+    const args = ['-hide_banner', '-loglevel', 'error', '-i', inputPath, '-y', tempOutput];
+
+    if (targetFormat === 'png') {
+      args.splice(5, 0, '-vcodec', 'png');
+    } else if (targetFormat === 'webp') {
+      args.splice(5, 0, '-vcodec', 'libwebp', '-quality', '92');
+    } else if (targetFormat === 'jpg' || targetFormat === 'jpeg') {
+      args.splice(5, 0, '-q:v', '2');
+    }
+
+    const child = spawn(ffmpegStatic, args, { windowsHide: true });
+    child.on('close', (code) => {
+      if (code === 0 && fs.existsSync(tempOutput)) {
+        try { fs.unlinkSync(inputPath); } catch {}
+        try {
+          fs.renameSync(tempOutput, outputPath);
+        } catch {
+          fs.copyFileSync(tempOutput, outputPath);
+          try { fs.unlinkSync(tempOutput); } catch {}
+        }
+        resolve({ success: true, path: outputPath });
+      } else {
+        resolve({ success: true, path: inputPath });
+      }
+    });
+    child.on('error', () => resolve({ success: true, path: inputPath }));
+  });
+}
+
+function cropImageWithFFmpeg(inputPath, outputPath, cropOption, customWidth, customHeight, maskShape = 'rect', cropPos = { x: 50, y: 50 }) {
+  return new Promise((resolve) => {
+    let filter = '';
+    const normX = Math.max(0, Math.min(100, Number(cropPos.x) || 0)) / 100;
+    const normY = Math.max(0, Math.min(100, Number(cropPos.y) || 0)) / 100;
+
+    if (cropOption === '1:1') {
+      filter = `crop=min(iw\\,ih):min(iw\\,ih):(iw-min(iw\\,ih))*${normX}:(ih-min(iw\\,ih))*${normY}`;
+    } else if (cropOption === '9:16') {
+      filter = `crop=ih*9/16:ih:(iw-ih*9/16)*${normX}:0`;
+    } else if (cropOption === '4:5') {
+      filter = `crop=ih*4/5:ih:(iw-ih*4/5)*${normX}:0`;
+    } else if (cropOption === '21:9') {
+      filter = `crop=iw:iw*9/21:0:(ih-iw*9/21)*${normY}`;
+    } else if (cropOption === 'custom' && customWidth > 0 && customHeight > 0) {
+      filter = `scale=${customWidth}:${customHeight}:force_original_aspect_ratio=decrease,pad=${customWidth}:${customHeight}:(ow-iw)/2:(oh-ih)/2`;
+    }
+
+    if (maskShape === 'circle') {
+      const baseFilter = filter ? filter + ',' : '';
+      filter = baseFilter + "format=yuva420p,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(gt(abs(W/2-X)^2+abs(H/2-Y)^2\\,(W/2)^2)\\,0\\,255)'";
+    }
+
+    if (!filter) {
+      resolve({ success: true, path: inputPath });
+      return;
+    }
+
+    const ext = path.extname(outputPath);
+    const tempOutput = path.join(path.dirname(outputPath), `_cropped_${Date.now()}${ext}`);
+    const args = ['-hide_banner', '-loglevel', 'error', '-i', inputPath, '-vf', filter, '-y', tempOutput];
+    const child = spawn(ffmpegStatic, args, { windowsHide: true });
+
+    child.on('close', (code) => {
+      if (code === 0 && fs.existsSync(tempOutput)) {
+        try {
+          fs.unlinkSync(outputPath);
+        } catch {}
+        try {
+          fs.renameSync(tempOutput, outputPath);
+        } catch {
+          fs.copyFileSync(tempOutput, outputPath);
+          try { fs.unlinkSync(tempOutput); } catch {}
+        }
+        resolve({ success: true, path: outputPath });
+      } else {
+        resolve({ success: true, path: inputPath });
+      }
+    });
+    child.on('error', () => resolve({ success: true, path: inputPath }));
+  });
+}
+
 function sendDownloadProgress(progress, extra = {}) {
   mainWindow?.webContents.send('download-progress', {
     progress: Math.min(100, Math.max(0, Math.round(progress))),
@@ -1117,7 +1316,7 @@ function mergeVideoWithDubAudio(videoPath, audioPath, outputPath, options = {}) 
     let videoFilterStr = '';
     if (burnSubtitleFile && fs.existsSync(burnSubtitleFile)) {
       const escapedPath = burnSubtitleFile.replace(/\\/g, '/').replace(/:/g, '\\:');
-      videoFilterStr = `subtitles='${escapedPath}':force_style='FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Alignment=2,MarginV=25'`;
+      videoFilterStr = `subtitles='${escapedPath}':force_style='FontName=Arial,FontSize=18,PrimaryColour=&H00FFFFFF,SecondaryColour=&H00000000,OutlineColour=&H00000000,BackColour=&H80000000,BorderStyle=1,Outline=1,Shadow=1,Alignment=2,MarginV=20,MarginL=30,MarginR=30'`;
     }
 
     const args = ['-hide_banner', '-loglevel', 'error', '-i', videoPath, '-i', audioPath];
@@ -1125,11 +1324,11 @@ function mergeVideoWithDubAudio(videoPath, audioPath, outputPath, options = {}) 
     if (mixWithBackground && videoFilterStr) {
       args.push('-filter_complex', `${filterStr};[0:v]${videoFilterStr}[v]`, '-map', '[v]', '-map', '[a]');
     } else if (mixWithBackground) {
-      args.push('-filter_complex', filterStr, '-map', '0:v:0', '-map', '[a]');
+      args.push('-filter_complex', filterStr, '-map', '0:v:0', '-map', '[a]', '-sn');
     } else if (videoFilterStr) {
       args.push('-vf', videoFilterStr, '-map', '0:v:0', '-map', '1:a:0');
     } else {
-      args.push('-map', '0:v:0', '-map', '1:a:0');
+      args.push('-map', '0:v:0', '-map', '1:a:0', '-sn');
     }
 
     args.push('-c:v', videoFilterStr ? 'libx264' : 'copy', '-preset', 'ultrafast', '-c:a', 'aac', '-b:a', '192k', '-y', outputPath);
@@ -1319,16 +1518,17 @@ async function downloadWithSubtitles(url, options, outputDir) {
     }
 
     let finalSubPath = subFilePath;
-    if (targetLang === 'ar' && !subFilePath.toLowerCase().includes('.ar.')) {
-      sendDownloadProgress(68, { message: 'ترجمة التسميات التوضيحية تلقائياً إلى اللغة العربية...' });
+    const baseLang = targetLang.split('-')[0];
+    if (!subFilePath.toLowerCase().includes(`.${baseLang}.`)) {
+      sendDownloadProgress(68, { message: `ترجمة التسميات التوضيحية تلقائياً إلى (${getLangLabel(targetLang)})...` });
       try {
         const { parseSubtitleFile, translateTextBatch, buildSrtContent } = require('./ai-dub');
         const cues = parseSubtitleFile(subFilePath);
         if (cues && cues.length > 0) {
-          const translatedTexts = await translateTextBatch(cues, 'ar');
+          const translatedTexts = await translateTextBatch(cues, targetLang);
           const translatedCues = cues.map((c, idx) => ({ ...c, text: translatedTexts[idx] || c.text }));
           const srtContent = buildSrtContent(translatedCues);
-          const translatedSrtPath = path.join(outputDir, `._v_sub_ar_${tempId}.srt`);
+          const translatedSrtPath = path.join(outputDir, `._v_sub_trans_${tempId}.srt`);
           fs.writeFileSync(translatedSrtPath, srtContent, 'utf-8');
           finalSubPath = translatedSrtPath;
         }
@@ -1589,6 +1789,22 @@ ipcMain.handle('set-clipboard-watch', (event, enabled) => {
   return { success: true, enabled: clipboardWatchEnabled };
 });
 
+ipcMain.handle('set-batch-auto-paste', (event, enabled) => {
+  batchAutoPasteEnabled = !!enabled;
+  if (batchAutoPasteEnabled) {
+    // تجاهل محتوى الحافظة الحالي — فقط ما يُنسخ بعد التفعيل
+    try {
+      batchAutoPasteLastRaw = clipboard.readText();
+    } catch {
+      batchAutoPasteLastRaw = '';
+    }
+    startBatchAutoPasteWatcher();
+  } else {
+    stopBatchAutoPasteWatcher();
+  }
+  return { success: true, enabled: batchAutoPasteEnabled };
+});
+
 ipcMain.handle('dismiss-clipboard-url', (event, url) => {
   if (url) {
     dismissedClipboardUrls.add(String(url));
@@ -1623,14 +1839,30 @@ ipcMain.handle('download', async (event, { url, options }) => {
     const outputDir = await resolveOutputDirectory(options?.downloadDir);
 
     if (options.mode === 'image') {
-      const imageFormat = options.imageFormat || 'jpg';
+      const imageFormat = options.imageFormat || 'png';
       const outputPath = path.join(outputDir, `${options.filename}.${imageFormat}`);
 
+      let res;
       if (options.imageMode === 'thumbnail') {
-        return await downloadThumbnailImage(options.thumbnailUrl, outputPath);
+        res = await downloadThumbnailImage(options.thumbnailUrl, outputPath);
+        await convertImageFormatWithFFmpeg(outputPath, outputPath, imageFormat);
+      } else {
+        res = await downloadFrameImage(url, Number(options.frameTime) || 0, outputPath, imageFormat);
       }
 
-      return await downloadFrameImage(url, Number(options.frameTime) || 0, outputPath, imageFormat);
+      if (options.aspectRatio && options.aspectRatio !== 'default') {
+        await cropImageWithFFmpeg(
+          outputPath,
+          outputPath,
+          options.aspectRatio,
+          options.customWidth,
+          options.customHeight,
+          options.maskShape || 'rect',
+          options.cropPos || { x: 50, y: 50 }
+        );
+      }
+
+      return res;
     }
 
     if (options.mode === 'dub') {
@@ -1692,6 +1924,110 @@ ipcMain.handle('show-item-in-folder', async (event, filePath) => {
   return { success: true };
 });
 
+ipcMain.handle('translate-video-or-text', async (event, { input, targetLang }) => {
+  try {
+    return await translateVideoOrText({ input, targetLang });
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+function sendTranslateProgress(percent, status) {
+  mainWindow?.webContents.send('translate-progress', {
+    percent: Math.min(100, Math.max(0, Math.round(percent))),
+    status: status || ''
+  });
+}
+
+async function translateVideoOrText({ input, targetLang = 'ar' }) {
+  const text = String(input || '').trim();
+  if (!text) {
+    throw new Error('الرجاء إدخال نص أو رابط فيديو للترجمة');
+  }
+
+  const isUrl = /^https?:\/\//i.test(text);
+
+  if (!isUrl) {
+    sendTranslateProgress(20, 'جاري ترجمة النص عبر Google Translate...');
+    const { translateText } = require('./ai-dub');
+    const translated = await translateText(text, targetLang);
+    sendTranslateProgress(100, 'اكتملت الترجمة النصية!');
+    return { success: true, text: translated, type: 'text' };
+  }
+
+  sendTranslateProgress(15, 'جاري فحص رابط الفيديو واستخراج شريط الحديث...');
+  await waitForYtDlp();
+  const normalizedUrl = normalizeUrl(text);
+  const tempDir = app.getPath('temp');
+  const tempId = Date.now();
+  const subBase = path.join(tempDir, `._trans_sub_${tempId}`);
+
+  sendTranslateProgress(35, 'جلب واستخراج الكلمات المنطوقة من الفيديو...');
+  try {
+    await runYtDlp([
+      ...getYtDlpBaseArgs(normalizedUrl),
+      '--write-subs',
+      '--write-auto-subs',
+      '--sub-langs', 'all,-live_chat',
+      '--sub-format', 'vtt/srt/best',
+      '--skip-download',
+      '--ignore-errors',
+      '--no-warnings',
+      '-o', subBase,
+      normalizedUrl
+    ]);
+  } catch (err) {
+    console.warn('Subtitle download notice:', err.message);
+  }
+
+  sendTranslateProgress(60, 'معالجة وتدقيق الكلمات المنطوقة الاستخراجية...');
+  const files = fs.readdirSync(tempDir).filter((f) => f.startsWith(`._trans_sub_${tempId}`) && (f.endsWith('.vtt') || f.endsWith('.srt')));
+
+  const { parseSubtitleFile, translateTextBatch } = require('./ai-dub');
+  let cues = [];
+
+  if (files.length > 0) {
+    const preferredFile = files.find(f => f.includes('.ar.') || f.includes('.en.') || f.includes('.fr.')) || files[0];
+    const subFilePath = path.join(tempDir, preferredFile);
+    cues = parseSubtitleFile(subFilePath);
+    cleanupTempFiles(files.map(f => path.join(tempDir, f)));
+  }
+
+  if (!cues || cues.length === 0) {
+    sendTranslateProgress(65, 'جاري تحليل وترجمة نصوص وكابشن الفيديو عبر Google Translate...');
+    const { generateSyntheticCues } = require('./ai-dub');
+    cues = await generateSyntheticCues(ffmpegStatic, normalizedUrl, 60, targetLang);
+  }
+
+  // Deduplicate and clean spoken cues
+  const cleanCues = [];
+  let lastText = '';
+  cues.forEach((cue) => {
+    const t = String(cue.text || '').trim();
+    if (t && t !== lastText) {
+      cleanCues.push(cue);
+      lastText = t;
+    }
+  });
+
+  sendTranslateProgress(75, `ترجمة ${cleanCues.length} جملة منطوقة عبر Google Translate...`);
+  const translatedTexts = await translateTextBatch(cleanCues, targetLang);
+  
+  sendTranslateProgress(95, 'تنسيق وترتيب شريط الترجمة المباشر...');
+  const formattedLines = cleanCues.map((c, idx) => {
+    const timeStr = c.start ? `[${c.start}] ` : '';
+    const transStr = translatedTexts[idx] || c.text;
+    return `${timeStr}${transStr}`;
+  });
+
+  sendTranslateProgress(100, 'اكتملت الترجمة بنجاح!');
+  return {
+    success: true,
+    type: 'speech_subtitles',
+    text: `🎙️ كلمات الفيديو المنطوقة المترجمة فورياً (عبر Google Translate):\n\n` + formattedLines.slice(0, 200).join('\n')
+  };
+}
+
 if (gotSingleInstanceLock) {
   app.whenReady().then(() => {
     createWindow();
@@ -1705,6 +2041,7 @@ if (gotSingleInstanceLock) {
       clearInterval(clipboardWatchInterval);
       clipboardWatchInterval = null;
     }
+    stopBatchAutoPasteWatcher();
     if (process.platform !== 'darwin') {
       app.quit();
     }
