@@ -1197,52 +1197,90 @@ function convertImageFormatWithFFmpeg(inputPath, outputPath, targetFormat) {
   });
 }
 
-function cropImageWithFFmpeg(inputPath, outputPath, cropOption, customWidth, customHeight, maskShape = 'rect', cropPos = { x: 50, y: 50 }) {
+function cropImageWithFFmpeg(inputPath, outputPath, cropOption, customWidth, customHeight, maskShape = 'rect', cropPos = { x: 50, y: 50 }, outputSize = 'original', cropRect = null) {
   return new Promise((resolve) => {
-    let filter = '';
-    const normX = Math.max(0, Math.min(100, Number(cropPos.x) || 0)) / 100;
-    const normY = Math.max(0, Math.min(100, Number(cropPos.y) || 0)) / 100;
+    const filters = [];
 
-    if (cropOption === '1:1') {
-      filter = `crop=min(iw\\,ih):min(iw\\,ih):(iw-min(iw\\,ih))*${normX}:(ih-min(iw\\,ih))*${normY}`;
-    } else if (cropOption === '9:16') {
-      filter = `crop=ih*9/16:ih:(iw-ih*9/16)*${normX}:0`;
-    } else if (cropOption === '4:5') {
-      filter = `crop=ih*4/5:ih:(iw-ih*4/5)*${normX}:0`;
-    } else if (cropOption === '21:9') {
-      filter = `crop=iw:iw*9/21:0:(ih-iw*9/21)*${normY}`;
-    } else if (cropOption === 'custom' && customWidth > 0 && customHeight > 0) {
-      filter = `scale=${customWidth}:${customHeight}:force_original_aspect_ratio=decrease,pad=${customWidth}:${customHeight}:(ow-iw)/2:(oh-ih)/2`;
+    // قص يدوي بإطار الماوس (نسب مئوية من الصورة)
+    if (cropRect && Number(cropRect.w) > 0 && Number(cropRect.h) > 0) {
+      const x = Math.max(0, Math.min(99, Number(cropRect.x) || 0));
+      const y = Math.max(0, Math.min(99, Number(cropRect.y) || 0));
+      const w = Math.max(1, Math.min(100 - x, Number(cropRect.w) || 100));
+      const h = Math.max(1, Math.min(100 - y, Number(cropRect.h) || 100));
+      filters.push(`crop=iw*${w}/100:ih*${h}/100:iw*${x}/100:ih*${y}/100`);
+    } else {
+      const normX = Math.max(0, Math.min(100, Number(cropPos.x) || 50)) / 100;
+      const normY = Math.max(0, Math.min(100, Number(cropPos.y) || 50)) / 100;
+
+      if (cropOption === '1:1') {
+        filters.push(`crop='min(iw\\,ih)':'min(iw\\,ih)':(iw-ow)*${normX}:(ih-oh)*${normY}`);
+      } else if (cropOption === '9:16') {
+        filters.push(`crop='if(gt(iw/ih\\,9/16)\\,ih*9/16\\,iw)':'if(gt(iw/ih\\,9/16)\\,ih\\,iw*16/9)':(iw-ow)*${normX}:(ih-oh)*${normY}`);
+      } else if (cropOption === '4:5') {
+        filters.push(`crop='if(gt(iw/ih\\,4/5)\\,ih*4/5\\,iw)':'if(gt(iw/ih\\,4/5)\\,ih\\,iw*5/4)':(iw-ow)*${normX}:(ih-oh)*${normY}`);
+      } else if (cropOption === '16:9') {
+        filters.push(`crop='if(gt(iw/ih\\,16/9)\\,ih*16/9\\,iw)':'if(gt(iw/ih\\,16/9)\\,ih\\,iw*9/16)':(iw-ow)*${normX}:(ih-oh)*${normY}`);
+      } else if (cropOption === '21:9') {
+        filters.push(`crop='if(gt(iw/ih\\,21/9)\\,ih*21/9\\,iw)':'if(gt(iw/ih\\,21/9)\\,ih\\,iw*9/21)':(iw-ow)*${normX}:(ih-oh)*${normY}`);
+      }
+    }
+
+    const w = Math.max(64, Math.min(7680, Number(customWidth) || 1080));
+    const h = Math.max(64, Math.min(7680, Number(customHeight) || 1080));
+
+    if (cropOption === 'custom' || outputSize === 'custom') {
+      filters.push(`scale=${w}:${h}:force_original_aspect_ratio=decrease`);
+      filters.push(`pad=${w}:${h}:(ow-iw)/2:(oh-ih)/2`);
+    } else if (outputSize === '720') {
+      filters.push('scale=\'if(gt(iw\\,ih)\\,720\\,-2)\':\'if(gt(iw\\,ih)\\,-2\\,720)\'');
+    } else if (outputSize === '1080') {
+      filters.push('scale=\'if(gt(iw\\,ih)\\,1080\\,-2)\':\'if(gt(iw\\,ih)\\,-2\\,1080)\'');
+    } else if (outputSize === '480') {
+      filters.push('scale=\'if(gt(iw\\,ih)\\,480\\,-2)\':\'if(gt(iw\\,ih)\\,-2\\,480)\'');
     }
 
     if (maskShape === 'circle') {
-      const baseFilter = filter ? filter + ',' : '';
-      filter = baseFilter + "format=yuva420p,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(gt(abs(W/2-X)^2+abs(H/2-Y)^2\\,(W/2)^2)\\,0\\,255)'";
+      filters.push('format=rgba');
+      filters.push("geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lte(hypot(X-W/2\\,Y-H/2)\\,min(W\\,H)/2)\\,255\\,0)'");
+    } else if (maskShape === 'rounded') {
+      filters.push('format=rgba');
     }
 
-    if (!filter) {
+    if (filters.length === 0) {
       resolve({ success: true, path: inputPath });
       return;
     }
 
-    const ext = path.extname(outputPath);
-    const tempOutput = path.join(path.dirname(outputPath), `_cropped_${Date.now()}${ext}`);
-    const args = ['-hide_banner', '-loglevel', 'error', '-i', inputPath, '-vf', filter, '-y', tempOutput];
+    const ext = path.extname(outputPath).toLowerCase();
+    const tempOutput = path.join(path.dirname(outputPath), `_cropped_${Date.now()}${ext || '.png'}`);
+    const args = ['-hide_banner', '-loglevel', 'error', '-i', inputPath, '-vf', filters.join(','), '-y'];
+
+    if (maskShape === 'circle' && (ext === '.jpg' || ext === '.jpeg')) {
+      args.push('-vcodec', 'png');
+    }
+
+    args.push(tempOutput);
     const child = spawn(ffmpegStatic, args, { windowsHide: true });
 
     child.on('close', (code) => {
       if (code === 0 && fs.existsSync(tempOutput)) {
-        try {
-          fs.unlinkSync(outputPath);
-        } catch {}
-        try {
-          fs.renameSync(tempOutput, outputPath);
-        } catch {
-          fs.copyFileSync(tempOutput, outputPath);
-          try { fs.unlinkSync(tempOutput); } catch {}
+        let finalPath = outputPath;
+        if (maskShape === 'circle' && (ext === '.jpg' || ext === '.jpeg')) {
+          finalPath = outputPath.replace(/\.(jpe?g)$/i, '.png');
         }
-        resolve({ success: true, path: outputPath });
+        try { if (fs.existsSync(finalPath)) fs.unlinkSync(finalPath); } catch {}
+        try {
+          fs.renameSync(tempOutput, finalPath);
+        } catch {
+          try {
+            fs.copyFileSync(tempOutput, finalPath);
+            fs.unlinkSync(tempOutput);
+          } catch {}
+        }
+        try { if (finalPath !== inputPath && fs.existsSync(inputPath)) fs.unlinkSync(inputPath); } catch {}
+        resolve({ success: true, path: finalPath });
       } else {
+        try { if (fs.existsSync(tempOutput)) fs.unlinkSync(tempOutput); } catch {}
         resolve({ success: true, path: inputPath });
       }
     });
@@ -1840,29 +1878,54 @@ ipcMain.handle('download', async (event, { url, options }) => {
 
     if (options.mode === 'image') {
       const imageFormat = options.imageFormat || 'png';
-      const outputPath = path.join(outputDir, `${options.filename}.${imageFormat}`);
+      let outputPath = path.join(outputDir, `${options.filename}.${imageFormat}`);
+      sendDownloadProgress(10, { message: 'جاري تجهيز الصورة...' });
 
       let res;
       if (options.imageMode === 'thumbnail') {
         res = await downloadThumbnailImage(options.thumbnailUrl, outputPath);
-        await convertImageFormatWithFFmpeg(outputPath, outputPath, imageFormat);
+        sendDownloadProgress(55, { message: 'جاري تحويل صيغة الصورة...' });
+        const converted = await convertImageFormatWithFFmpeg(outputPath, outputPath, imageFormat);
+        if (converted?.path) {
+          outputPath = converted.path;
+          res = { success: true, path: outputPath };
+        }
       } else {
+        sendDownloadProgress(30, { message: 'جاري استخراج اللقطة...' });
         res = await downloadFrameImage(url, Number(options.frameTime) || 0, outputPath, imageFormat);
+        if (res?.path) outputPath = res.path;
       }
 
-      if (options.aspectRatio && options.aspectRatio !== 'default') {
-        await cropImageWithFFmpeg(
+      const needsCrop = options.cropEnabled
+        || (options.cropRect && options.cropRect.w > 0)
+        || (options.aspectRatio && options.aspectRatio !== 'default')
+        || (options.outputSize && options.outputSize !== 'original')
+        || (options.maskShape && options.maskShape !== 'rect');
+
+      if (needsCrop) {
+        sendDownloadProgress(75, { message: 'جاري تطبيق القص والأبعاد...' });
+        const cropped = await cropImageWithFFmpeg(
           outputPath,
           outputPath,
-          options.aspectRatio,
+          options.aspectRatio || 'default',
           options.customWidth,
           options.customHeight,
           options.maskShape || 'rect',
-          options.cropPos || { x: 50, y: 50 }
+          options.cropPos || { x: 50, y: 50 },
+          options.outputSize || 'original',
+          options.cropEnabled ? options.cropRect : null
         );
+        if (cropped?.path) {
+          outputPath = cropped.path;
+          res = { success: true, path: outputPath };
+        }
       }
 
-      return res;
+      sendDownloadProgress(100, { message: 'اكتمل حفظ الصورة' });
+      if (!res?.success || !outputPath || !fs.existsSync(outputPath)) {
+        return { success: false, error: 'تعذر حفظ ملف الصورة' };
+      }
+      return { success: true, path: outputPath };
     }
 
     if (options.mode === 'dub') {
@@ -1910,10 +1973,27 @@ ipcMain.handle('open-downloads', async (event, customPath) => {
 });
 
 ipcMain.handle('open-path', async (event, filePath) => {
-  if (!filePath || typeof filePath !== 'string' || !fs.existsSync(filePath)) {
+  if (!filePath || typeof filePath !== 'string') {
+    return { success: false, error: 'مسار الملف غير صالح' };
+  }
+  const normalized = path.normalize(filePath);
+  if (!fs.existsSync(normalized)) {
     return { success: false, error: 'الملف غير موجود' };
   }
-  return shell.openPath(path.normalize(filePath));
+  try {
+    const errMsg = await shell.openPath(normalized);
+    if (errMsg) {
+      // إن فشل فتح الملف بالتطبيق الافتراضي، افتح المجلد وحدّد الملف
+      shell.showItemInFolder(normalized);
+      return { success: false, error: errMsg, openedFolder: true };
+    }
+    return { success: true, path: normalized };
+  } catch (error) {
+    try {
+      shell.showItemInFolder(normalized);
+    } catch {}
+    return { success: false, error: error.message || 'تعذر فتح الملف' };
+  }
 });
 
 ipcMain.handle('show-item-in-folder', async (event, filePath) => {

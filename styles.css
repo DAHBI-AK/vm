@@ -537,3 +537,20 @@ body {
 .nav-button.active {
   color: var(--primary);
 }
+
+/* Batch Queue Mini Buttons & Editor */
+.batch-queue-list {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.btn-batch-mini-edit:hover {
+  background: rgba(0, 242, 254, 0.3) !important;
+  color: #fff !important;
+}
+
+.btn-batch-mini-delete:hover {
+  background: rgba(239, 68, 68, 0.35) !important;
+  color: #fff !important;
+}
+

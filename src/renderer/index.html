@@ -141,14 +141,43 @@
               <i class="fas fa-search"></i>
               <span data-i18n="search">بحث</span>
             </button>
-            <button class="btn-paste" id="pasteBtn" data-i18n-title="paste" title="لصق">
+            <button type="button" class="btn-paste" id="pasteBtn" data-i18n-title="paste" title="لصق">
               <i class="fas fa-paste"></i>
             </button>
-            <button class="btn-batch-toggle" id="batchToggleBtn" title="تحميل روابط متتالية بدون قيود">
-              <i class="fas fa-list-ol"></i>
-              <span data-i18n="batchToggle">سلسلة روابط (بدون قيود)</span>
-            </button>
-            <button class="btn-clear" id="clearBtn" data-i18n-title="clear" title="مسح">
+
+            <div class="url-tools-icons" id="urlToolsIcons">
+              <!-- قائمة الروابط المنسوخة -->
+              <div class="url-tool-wrap" id="copiedLinksWrap">
+                <button type="button" class="btn-url-tool" id="copiedLinksBtn" title="اختيار من الروابط المنسوخة">
+                  <i class="fas fa-history"></i>
+                  <span class="url-tool-badge" id="copiedLinksBadge" hidden>0</span>
+                </button>
+                <div class="copied-links-dropdown hidden" id="copiedLinksDropdown">
+                  <div class="copied-links-header">
+                    <strong><i class="fas fa-clipboard-list"></i> الروابط المنسوخة</strong>
+                    <button type="button" class="btn-clear-copied" id="clearCopiedLinksBtn" title="مسح القائمة"><i class="fas fa-trash"></i></button>
+                  </div>
+                  <div class="copied-links-list" id="copiedLinksList">
+                    <p class="copied-links-empty">لا توجد روابط منسوخة بعد</p>
+                  </div>
+                  <p class="copied-links-hint">اضغط على رابط لبدء البحث فوراً</p>
+                </div>
+              </div>
+
+              <!-- لصق تلقائي للسلسلة -->
+              <button type="button" class="btn-url-tool btn-auto-paste-icon" id="autoPasteBatchBtn" title="لصق تلقائي — أي رابط تنسخه بعد التفعيل يُضاف للقائمة">
+                <i class="fas fa-clipboard" id="autoPasteIcon"></i>
+                <span class="auto-paste-dot" id="autoPasteDot"></span>
+                <span class="url-tool-status" id="autoPasteStatusBadge">OFF</span>
+              </button>
+
+              <!-- سلسلة روابط — آخر رمز مصغّر -->
+              <button type="button" class="btn-url-tool btn-batch-icon-tool" id="batchToggleBtn" title="سلسلة روابط (بدون قيود)">
+                <i class="fas fa-list-ol"></i>
+              </button>
+            </div>
+
+            <button type="button" class="btn-clear" id="clearBtn" data-i18n-title="clear" title="مسح">
               <i class="fas fa-times"></i>
             </button>
           </div>
@@ -157,15 +186,6 @@
             <div class="batch-panel-header">
               <h4><i class="fas fa-layer-group"></i> <span data-i18n="batchTitle">تحميل سلسلة روابط متتالية تلقائياً</span></h4>
               <div class="batch-header-actions">
-                <!-- Auto-Paste Toggle Button -->
-                <button type="button" class="btn-auto-paste-toggle" id="autoPasteBatchBtn" title="لصق تلقائي — بعد التفعيل فقط: أي رابط تنسخه يُضاف فوراً للقائمة">
-                  <span class="auto-paste-icon-wrap">
-                    <i class="fas fa-clipboard-check" id="autoPasteIcon"></i>
-                    <span class="auto-paste-dot" id="autoPasteDot"></span>
-                  </span>
-                  <span class="auto-paste-label" id="autoPasteLabel">لصق تلقائي</span>
-                  <span class="auto-paste-status-badge" id="autoPasteStatusBadge">OFF</span>
-                </button>
                 <button type="button" class="btn-close-batch" id="closeBatchBtn"><i class="fas fa-times"></i></button>
               </div>
             </div>
@@ -373,68 +393,86 @@
           </div>
 
           <div class="studio-workspace studio-image-workspace" id="imageWorkspace">
-            <div class="image-mode-cards">
-              <button type="button" class="image-mode-card active" data-image-mode="thumbnail">
-                <i class="fas fa-image"></i>
-                <strong data-i18n="thumbnail">الصورة المصغرة</strong>
-                <span data-i18n="thumbnailDesc">تحميل غلاف الفيديو الأصلي</span>
-              </button>
-              <button type="button" class="image-mode-card" data-image-mode="frame">
-                <i class="fas fa-camera"></i>
-                <strong data-i18n="frame">لقطة من الفيديو</strong>
-                <span data-i18n="frameDesc">استخراج إطار من وقت محدد</span>
-              </button>
-            </div>
-
-            <!-- 1. Original Thumbnail Preview Box (معاينة غلاف/الصورة المصغرة الأصلية) -->
-            <div class="thumbnail-preview-box" id="thumbnailPreviewBox" style="width:100%; max-height:280px; border-radius:12px; overflow:hidden; border:1px solid rgba(99,102,241,0.3); background:#000; margin-bottom:14px; text-align:center; position:relative; transition: all 0.3s ease;">
-              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.08);">
-                <span style="font-size:12px; color:var(--primary-light); font-weight:bold;"><i class="fas fa-image"></i> معاينة غلاف / الصورة المصغرة الأصلية للفيديو</span>
-                
-                <!-- Zoom & Fullscreen Toolbar for Thumbnail -->
-                <div class="preview-toolbar" style="display:flex; gap:6px; align-items:center;">
-                  <button type="button" id="thumbZoomInBtn" title="تكبير الصورة" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-search-plus"></i></button>
-                  <button type="button" id="thumbZoomOutBtn" title="تصغير الصورة" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-search-minus"></i></button>
-                  <button type="button" id="thumbZoomResetBtn" title="إعادة الضبط" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-undo"></i></button>
-                  <button type="button" id="thumbFullscreenBtn" title="ملء الشاشة" style="background:rgba(99,102,241,0.3); border:1px solid rgba(99,102,241,0.5); color:#a5b4fc; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;"><i class="fas fa-expand-arrows-alt"></i> ملء الشاشة</button>
-                </div>
-              </div>
-
-              <div id="thumbImgContainer" style="width:100%; min-height:160px; max-height:240px; display:flex; align-items:center; justify-content:center; background:#000; position:relative; overflow:hidden;">
-                <img id="thumbnailPreviewImg" src="" style="width:100%; max-height:230px; object-fit:contain; display:block; transition: transform 0.2s ease;" alt="غلاف الفيديو">
-                
-                <!-- Interactive Draggable Crop Selection Frame for Thumbnail -->
-                <div id="thumbCropFrame" style="display:none; position:absolute; width:60%; height:60%; border:2px dashed #34d399; background:rgba(52,211,153,0.15); box-shadow:0 0 0 9999px rgba(0,0,0,0.5); cursor:move; top:20%; left:20%; border-radius:4px; z-index:10;">
-                  <span style="position:absolute; top:4px; right:6px; font-size:10px; background:rgba(0,0,0,0.7); color:#34d399; padding:2px 6px; border-radius:4px; font-weight:bold; pointer-events:none;">✂️ اسحب لتحديد منطقة القطع</span>
-                </div>
+            <!-- اختيار المصدر: صورة مصغرة أو لقطة من الفيديو -->
+            <div class="image-source-picker" id="imageSourcePicker">
+              <span class="image-dim-label"><i class="fas fa-images"></i> مصدر الصورة — اختر المصغّرة أو لقطة من الفيديو</span>
+              <div class="image-source-pills" id="imageSourcePills">
+                <button type="button" class="image-source-pill active" data-image-mode="thumbnail" id="sourceThumbPill">
+                  <i class="fas fa-image"></i>
+                  <span>
+                    <strong data-i18n="thumbnail">الصورة المصغرة</strong>
+                    <small data-i18n="thumbnailDesc">غلاف الفيديو الأصلي</small>
+                  </span>
+                </button>
+                <button type="button" class="image-source-pill" data-image-mode="frame" id="sourceFramePill">
+                  <i class="fas fa-camera"></i>
+                  <span>
+                    <strong data-i18n="frame">لقطة من الفيديو</strong>
+                    <small data-i18n="frameDesc">إطار من وقت محدد</small>
+                  </span>
+                </button>
               </div>
             </div>
 
-            <!-- 2. Video Frame Extraction Controls (استخراج لقطة وفريم من الوقت المحدد) -->
+            <!-- معاينة الصورة المصغرة / الغلاف -->
+            <div class="thumbnail-preview-box" id="thumbnailPreviewBox">
+              <div class="image-preview-toolbar-row">
+                <span class="image-preview-title"><i class="fas fa-image"></i> غلاف / الصورة المصغرة الأصلية</span>
+                <div class="preview-toolbar">
+                  <button type="button" id="thumbCropToggleBtn" class="btn-crop-toggle" title="قص"><i class="fas fa-crop-alt"></i></button>
+                  <button type="button" id="thumbZoomInBtn" title="تكبير"><i class="fas fa-search-plus"></i></button>
+                  <span id="thumbZoomLabel" class="zoom-pct-label">100%</span>
+                  <button type="button" id="thumbZoomOutBtn" title="تصغير"><i class="fas fa-search-minus"></i></button>
+                  <button type="button" id="thumbZoomResetBtn" title="إعادة"><i class="fas fa-undo"></i></button>
+                  <button type="button" id="thumbFullscreenBtn" class="btn-fs-preview" title="ملء الشاشة"><i class="fas fa-expand-arrows-alt"></i></button>
+                </div>
+              </div>
+              <div id="thumbImgContainer" class="image-crop-stage">
+                <img id="thumbnailPreviewImg" src="" alt="غلاف الفيديو">
+                <div id="thumbCropFrame" class="crop-overlay" hidden>
+                  <div class="crop-label"><i class="fas fa-arrows-alt"></i> اسحب / غيّر الحجم <span class="crop-size-readout" id="thumbCropSize">60×60%</span></div>
+                  <span class="crop-handle nh" data-handle="n"></span>
+                  <span class="crop-handle ne" data-handle="ne"></span>
+                  <span class="crop-handle eh" data-handle="e"></span>
+                  <span class="crop-handle se" data-handle="se"></span>
+                  <span class="crop-handle sh" data-handle="s"></span>
+                  <span class="crop-handle sw" data-handle="sw"></span>
+                  <span class="crop-handle wh" data-handle="w"></span>
+                  <span class="crop-handle nw" data-handle="nw"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- لقطة من الفيديو + شريط الوقت -->
             <div class="frame-controls" id="frameControls" style="display:none;">
-              <div class="frame-preview" style="position:relative; width:100%; background:#000; border-radius:10px; overflow:hidden; margin-bottom:12px; transition: all 0.3s ease;">
-                <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); padding:6px 12px; border-bottom:1px solid rgba(255,255,255,0.08); position:relative; z-index:20;">
-                  <span style="font-size:12px; color:var(--primary-light); font-weight:bold;"><i class="fas fa-camera"></i> معاينة لقطة الفريم المختار</span>
-                  
-                  <!-- Zoom & Fullscreen Toolbar for Frame -->
-                  <div class="preview-toolbar" style="display:flex; gap:6px; align-items:center;">
-                    <button type="button" id="frameZoomInBtn" title="تكبير اللقطة" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-search-plus"></i></button>
-                    <button type="button" id="frameZoomOutBtn" title="تصغير اللقطة" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-search-minus"></i></button>
-                    <button type="button" id="frameZoomResetBtn" title="إعادة الضبط" style="background:rgba(255,255,255,0.1); border:none; color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer;"><i class="fas fa-undo"></i></button>
-                    <button type="button" id="frameFullscreenBtn" title="ملء الشاشة" style="background:rgba(99,102,241,0.3); border:1px solid rgba(99,102,241,0.5); color:#a5b4fc; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; font-weight:bold;"><i class="fas fa-expand-arrows-alt"></i> ملء الشاشة</button>
+              <div class="frame-preview">
+                <div class="image-preview-toolbar-row">
+                  <span class="image-preview-title"><i class="fas fa-camera"></i> لقطة من وقت محدد في الفيديو</span>
+                  <div class="preview-toolbar">
+                    <button type="button" id="frameCropToggleBtn" class="btn-crop-toggle" title="قص"><i class="fas fa-crop-alt"></i></button>
+                    <button type="button" id="frameZoomInBtn" title="تكبير"><i class="fas fa-search-plus"></i></button>
+                    <span id="frameZoomLabel" class="zoom-pct-label">100%</span>
+                    <button type="button" id="frameZoomOutBtn" title="تصغير"><i class="fas fa-search-minus"></i></button>
+                    <button type="button" id="frameZoomResetBtn" title="إعادة"><i class="fas fa-undo"></i></button>
+                    <button type="button" id="frameFullscreenBtn" class="btn-fs-preview" title="ملء الشاشة"><i class="fas fa-expand-arrows-alt"></i></button>
                   </div>
                 </div>
 
-                <div id="frameImgContainer" style="width:100%; min-height:160px; max-height:280px; display:flex; align-items:center; justify-content:center; background:#000; position:relative; overflow:hidden;">
-                  <video id="frameVideoPlayer" controls playsinline style="width:100%; max-height:280px; display:none; object-fit:contain; transition: transform 0.2s ease;"></video>
-                  <img id="framePreviewImg" src="" data-i18n-alt="framePreview" alt="معاينة اللقطة" style="width:100%; max-height:280px; object-fit:contain; display:block; transition: transform 0.2s ease;">
-                  
-                  <!-- Interactive Draggable Crop Selection Frame for Video Frame -->
-                  <div id="frameCropFrame" style="display:none; position:absolute; width:60%; height:60%; border:2px dashed #34d399; background:rgba(52,211,153,0.15); box-shadow:0 0 0 9999px rgba(0,0,0,0.5); cursor:move; top:20%; left:20%; border-radius:4px; z-index:10;">
-                    <span style="position:absolute; top:4px; right:6px; font-size:10px; background:rgba(0,0,0,0.7); color:#34d399; padding:2px 6px; border-radius:4px; font-weight:bold; pointer-events:none;">✂️ اسحب لتحديد منطقة القطع</span>
+                <div id="frameImgContainer" class="image-crop-stage">
+                  <video id="frameVideoPlayer" controls playsinline></video>
+                  <img id="framePreviewImg" src="" data-i18n-alt="framePreview" alt="معاينة اللقطة">
+                  <div id="frameCropFrame" class="crop-overlay" hidden>
+                    <div class="crop-label"><i class="fas fa-arrows-alt"></i> اسحب / غيّر الحجم <span class="crop-size-readout" id="frameCropSize">60×60%</span></div>
+                    <span class="crop-handle nh" data-handle="n"></span>
+                    <span class="crop-handle ne" data-handle="ne"></span>
+                    <span class="crop-handle eh" data-handle="e"></span>
+                    <span class="crop-handle se" data-handle="se"></span>
+                    <span class="crop-handle sh" data-handle="s"></span>
+                    <span class="crop-handle sw" data-handle="sw"></span>
+                    <span class="crop-handle wh" data-handle="w"></span>
+                    <span class="crop-handle nw" data-handle="nw"></span>
                   </div>
-
-                  <span class="frame-time-badge" id="frameTimeBadge" style="position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.85); color:#a5b4fc; border:1px solid #6366f1; padding:4px 10px; border-radius:12px; font-family:monospace; font-weight:bold; z-index:15;">00:00:00</span>
+                  <span class="frame-time-badge" id="frameTimeBadge">00:00:00</span>
                 </div>
 
                 <div class="frame-slider-wrap" style="direction: ltr; padding:10px;">
@@ -446,62 +484,55 @@
             </div>
 
             <!-- 3. Image Aspect Ratio & Dimensions Control Row (أبعاد وحجم الصورة) -->
-            <div class="image-aspect-row" id="imageAspectRow" style="margin-bottom:14px; background:rgba(15,23,42,0.7); padding:12px; border-radius:12px; border:1px solid rgba(99,102,241,0.25);">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <label style="font-size:13px; font-weight:bold; color:var(--text-bright); display:flex; align-items:center; gap:6px;">
-                  <i class="fas fa-ruler-combined" style="color:var(--primary-light);"></i> <span data-i18n="imageDimensions">أبعاد وحجم الصورة</span>
+            <div class="image-aspect-row" id="imageAspectRow">
+              <div class="image-dim-header">
+                <label>
+                  <i class="fas fa-ruler-combined"></i> <span data-i18n="imageDimensions">أبعاد وحجم الصورة</span>
                 </label>
-                <span class="aspect-badge" id="aspectBadge" style="font-size:11px; background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.3); padding:3px 10px; border-radius:10px; font-weight:bold;">📐 افتراضي (16:9)</span>
+                <span class="aspect-badge" id="aspectBadge">📐 أصلي</span>
               </div>
 
-              <div class="aspect-pills" id="aspectPills" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-                <button type="button" class="aspect-pill active" data-aspect="default" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                  <i class="fas fa-expand"></i> <span data-i18n="aspectDefault">افتراضي (16:9)</span>
-                </button>
-                <button type="button" class="aspect-pill" data-aspect="1:1" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                  <i class="fas fa-square"></i> <span data-i18n="aspect11">مربع (1:1)</span>
-                </button>
-                <button type="button" class="aspect-pill" data-aspect="9:16" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                  <i class="fas fa-mobile-alt"></i> <span data-i18n="aspect916">جوال / ريلز (9:16)</span>
-                </button>
-                <button type="button" class="aspect-pill" data-aspect="4:5" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                  <i class="fas fa-portrait"></i> <span data-i18n="aspect45">بوست انستغرام (4:5)</span>
-                </button>
-                <button type="button" class="aspect-pill" data-aspect="21:9" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                  <i class="fas fa-tv"></i> <span data-i18n="aspect219">سينمائي (21:9)</span>
-                </button>
-                <button type="button" class="aspect-pill" data-aspect="custom" style="padding:5px 12px; font-size:12px; border-radius:8px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                  <i class="fas fa-sliders-h"></i> <span data-i18n="aspectCustom">مخصص px</span>
-                </button>
-              </div>
-
-              <div class="custom-aspect-inputs" id="customAspectInputs" style="display:none; margin-top:10px; padding-top:8px; border-top:1px dashed rgba(255,255,255,0.1); align-items:center; gap:10px;">
-                <div style="flex:1;">
-                  <span style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:3px;">العرض (Width px)</span>
-                  <input type="number" id="customAspectWidth" value="1080" min="100" max="7680" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border-color); color:#fff; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center;">
-                </div>
-                <span style="color:var(--text-dim); font-weight:bold; margin-top:14px;">×</span>
-                <div style="flex:1;">
-                  <span style="font-size:11px; color:var(--text-dim); display:block; margin-bottom:3px;">الارتفاع (Height px)</span>
-                  <input type="number" id="customAspectHeight" value="1080" min="100" max="7680" style="width:100%; background:rgba(0,0,0,0.4); border:1px solid var(--border-color); color:#fff; border-radius:6px; padding:4px 8px; font-size:12px; text-align:center;">
+              <div class="image-dim-section">
+                <span class="image-dim-label">نسبة الأبعاد (Aspect)</span>
+                <div class="aspect-pills" id="aspectPills">
+                  <button type="button" class="aspect-pill active" data-aspect="default"><i class="fas fa-expand"></i> حر</button>
+                  <button type="button" class="aspect-pill" data-aspect="16:9"><i class="fas fa-tv"></i> 16:9</button>
+                  <button type="button" class="aspect-pill" data-aspect="1:1"><i class="fas fa-square"></i> 1:1</button>
+                  <button type="button" class="aspect-pill" data-aspect="9:16"><i class="fas fa-mobile-alt"></i> 9:16</button>
+                  <button type="button" class="aspect-pill" data-aspect="4:5"><i class="fas fa-portrait"></i> 4:5</button>
+                  <button type="button" class="aspect-pill" data-aspect="21:9"><i class="fas fa-film"></i> 21:9</button>
                 </div>
               </div>
 
-              <!-- 3.1 Mask Shape Selector (نوع وشكل إطار الصورة: مربع، دائري، حواف دائرية) -->
-              <div class="mask-shape-row" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-                <label style="font-size:12px; color:var(--text-dim); font-weight:bold; display:flex; align-items:center; gap:6px;">
-                  <i class="fas fa-shapes" style="color:#34d399;"></i> <span data-i18n="maskShapeLabel">شكل ونوع الإطار:</span>
-                </label>
-                <div class="shape-pills" id="maskShapePills" style="display:flex; gap:6px;">
-                  <button type="button" class="mask-shape-pill active" data-shape="rect" style="padding:4px 12px; font-size:11px; border-radius:6px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                    <i class="fas fa-vector-square"></i> <span data-i18n="shapeRect">مربع / مستطيل</span>
-                  </button>
-                  <button type="button" class="mask-shape-pill" data-shape="circle" style="padding:4px 12px; font-size:11px; border-radius:6px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                    <i class="fas fa-circle"></i> <span data-i18n="shapeCircle">دائري / أفتار</span>
-                  </button>
-                  <button type="button" class="mask-shape-pill" data-shape="rounded" style="padding:4px 12px; font-size:11px; border-radius:6px; background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.15); cursor:pointer;">
-                    <i class="far fa-square"></i> <span data-i18n="shapeRounded">حواف دائرية</span>
-                  </button>
+              <div class="image-dim-section">
+                <span class="image-dim-label">حجم التصدير (Resolution)</span>
+                <div class="size-pills" id="outputSizePills">
+                  <button type="button" class="size-pill active" data-size="original">أصلي</button>
+                  <button type="button" class="size-pill" data-size="480">480px</button>
+                  <button type="button" class="size-pill" data-size="720">720px</button>
+                  <button type="button" class="size-pill" data-size="1080">1080px</button>
+                  <button type="button" class="size-pill" data-size="custom">مخصص</button>
+                </div>
+              </div>
+
+              <div class="custom-aspect-inputs" id="customAspectInputs" dir="ltr">
+                <div class="custom-dim-field">
+                  <span>Width (عرض)</span>
+                  <input type="number" id="customAspectWidth" value="1080" min="64" max="7680" step="1">
+                </div>
+                <span class="custom-dim-x">×</span>
+                <div class="custom-dim-field">
+                  <span>Height (ارتفاع)</span>
+                  <input type="number" id="customAspectHeight" value="1080" min="64" max="7680" step="1">
+                </div>
+              </div>
+
+              <div class="mask-shape-row">
+                <label><i class="fas fa-shapes"></i> <span data-i18n="maskShapeLabel">شكل الإطار:</span></label>
+                <div class="shape-pills" id="maskShapePills">
+                  <button type="button" class="mask-shape-pill active" data-shape="rect"><i class="fas fa-vector-square"></i> مستطيل</button>
+                  <button type="button" class="mask-shape-pill" data-shape="circle"><i class="fas fa-circle"></i> دائري</button>
+                  <button type="button" class="mask-shape-pill" data-shape="rounded"><i class="far fa-square"></i> حواف ناعمة</button>
                 </div>
               </div>
             </div>
@@ -569,9 +600,9 @@
                 <span class="circular-percent-text" id="circularPercentText">0%</span>
               </div>
 
-              <button type="button" class="btn-quick-play hidden" id="quickPlayBtn" title="فتح وتأكيد تشغيل الفيديو مباشرة">
-                <i class="fas fa-play"></i>
-                <span>تشغيل الفيديو</span>
+              <button type="button" class="btn-quick-play hidden" id="quickPlayBtn" title="فتح الملف المحمّل">
+                <i class="fas fa-external-link-alt"></i>
+                <span id="quickPlayBtnLabel">فتح الملف</span>
               </button>
             </div>
           </div>
@@ -592,10 +623,20 @@
           <i class="fas fa-check-circle"></i>
           <h3 data-i18n="downloadSuccess">تم التحميل بنجاح!</h3>
           <p id="successPath"></p>
-          <button class="btn-new-download" id="newDownloadBtn">
-            <i class="fas fa-plus"></i>
-            <span data-i18n="newDownload">تحميل جديد</span>
-          </button>
+          <div class="success-actions">
+            <button type="button" class="btn-open-file" id="openDownloadedFileBtn">
+              <i class="fas fa-external-link-alt"></i>
+              <span id="openDownloadedFileLabel">فتح الملف</span>
+            </button>
+            <button type="button" class="btn-show-folder" id="showDownloadedFolderBtn">
+              <i class="fas fa-folder-open"></i>
+              <span>إظهار في المجلد</span>
+            </button>
+            <button class="btn-new-download" id="newDownloadBtn">
+              <i class="fas fa-plus"></i>
+              <span data-i18n="newDownload">تحميل جديد</span>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -729,16 +770,105 @@
     </main>
   </div>
 
-  <!-- Image Fullscreen Inspection Modal (ملء الشاشة لمعاينة الصورة واللقطة) -->
-  <div id="imageFullscreenModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.95); z-index:9999; justify-content:center; align-items:center; flex-direction:column; padding:20px;">
-    <div style="position:absolute; top:20px; right:20px; display:flex; gap:12px; align-items:center; z-index:10000;">
-      <span id="modalImageTitle" style="color:#a5b4fc; font-weight:bold; font-size:14px; background:rgba(15,23,42,0.8); padding:6px 14px; border-radius:12px; border:1px solid #6366f1;">معاينة بحجم الشاشة الكاملة</span>
-      <button type="button" id="closeFullscreenModalBtn" style="background:#ef4444; color:#fff; border:none; padding:8px 16px; border-radius:10px; cursor:pointer; font-weight:bold; font-size:14px; display:flex; align-items:center; gap:6px;">
-        <i class="fas fa-times"></i> إغلاق
+  <!-- Image Fullscreen Editor Modal — ملء الشاشة الحقيقي + رموز مصغّرة -->
+  <div id="imageFullscreenModal" class="image-fs-modal" hidden>
+    <div class="image-fs-toolbar">
+      <span id="modalImageTitle" class="image-fs-title">شاشة كاملة</span>
+
+      <div class="image-fs-tools">
+        <button type="button" id="fsCropToggleBtn" class="btn-fs-icon btn-crop-toggle" title="قص بالماوس">
+          <i class="fas fa-crop-alt"></i>
+        </button>
+
+        <div class="fs-dim-wrap" id="fsDimWrap">
+          <button type="button" id="fsDimToggleBtn" class="btn-fs-icon" title="أبعاد وحجم الصورة">
+            <i class="fas fa-ruler-combined"></i>
+          </button>
+          <div class="fs-dim-popover hidden" id="fsDimPopover">
+            <div class="image-fs-section">
+              <span class="image-dim-label">نسبة الأبعاد</span>
+              <div class="aspect-pills" id="fsAspectPills">
+                <button type="button" class="aspect-pill" data-aspect="default">حر</button>
+                <button type="button" class="aspect-pill" data-aspect="16:9">16:9</button>
+                <button type="button" class="aspect-pill" data-aspect="1:1">1:1</button>
+                <button type="button" class="aspect-pill" data-aspect="9:16">9:16</button>
+                <button type="button" class="aspect-pill" data-aspect="4:5">4:5</button>
+                <button type="button" class="aspect-pill" data-aspect="21:9">21:9</button>
+              </div>
+            </div>
+            <div class="image-fs-section">
+              <span class="image-dim-label">حجم التصدير</span>
+              <div class="size-pills" id="fsSizePills">
+                <button type="button" class="size-pill" data-size="original">أصلي</button>
+                <button type="button" class="size-pill" data-size="480">480</button>
+                <button type="button" class="size-pill" data-size="720">720</button>
+                <button type="button" class="size-pill" data-size="1080">1080</button>
+                <button type="button" class="size-pill" data-size="custom">مخصص</button>
+              </div>
+              <div class="custom-aspect-inputs" id="fsCustomInputs" dir="ltr">
+                <div class="custom-dim-field">
+                  <span>Width</span>
+                  <input type="number" id="fsCustomWidth" value="1080" min="64" max="7680">
+                </div>
+                <span class="custom-dim-x">×</span>
+                <div class="custom-dim-field">
+                  <span>Height</span>
+                  <input type="number" id="fsCustomHeight" value="1080" min="64" max="7680">
+                </div>
+              </div>
+            </div>
+            <div class="image-fs-section">
+              <span class="image-dim-label">شكل الإطار</span>
+              <div class="shape-pills" id="fsMaskPills">
+                <button type="button" class="mask-shape-pill" data-shape="rect">مستطيل</button>
+                <button type="button" class="mask-shape-pill" data-shape="circle">دائري</button>
+                <button type="button" class="mask-shape-pill" data-shape="rounded">حواف ناعمة</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fs-time-wrap" id="fsFrameTimeSection" hidden>
+          <button type="button" id="fsTimeToggleBtn" class="btn-fs-icon" title="وقت لقطة الفيديو">
+            <i class="fas fa-film"></i>
+          </button>
+          <div class="fs-time-popover hidden" id="fsTimePopover">
+            <span class="image-dim-label">وقت اللقطة</span>
+            <div class="fs-frame-time" dir="ltr">
+              <input type="range" id="fsFrameTimeRange" min="0" max="100" value="0" step="0.1">
+              <div class="fs-frame-time-row">
+                <input type="text" id="fsFrameTimeInput" value="00:00:00" spellcheck="false">
+                <span id="fsFrameTimeBadge" class="fs-time-badge">00:00:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="fsZoomOutBtn" class="btn-fs-icon" title="تصغير"><i class="fas fa-search-minus"></i></button>
+        <span id="fsZoomLabel" class="fs-zoom-label">100%</span>
+        <button type="button" id="fsZoomInBtn" class="btn-fs-icon" title="تكبير"><i class="fas fa-search-plus"></i></button>
+        <button type="button" id="fsZoomResetBtn" class="btn-fs-icon" title="إعادة"><i class="fas fa-undo"></i></button>
+      </div>
+
+      <button type="button" id="closeFullscreenModalBtn" class="image-fs-close" title="تم / إغلاق">
+        <i class="fas fa-check"></i>
       </button>
     </div>
-    <div style="max-width:90vw; max-height:85vh; display:flex; justify-content:center; align-items:center; overflow:auto;">
-      <img id="fullscreenModalImg" src="" style="max-width:90vw; max-height:85vh; object-fit:contain; border-radius:12px; border:1px solid rgba(255,255,255,0.2); transition:transform 0.2s ease;" alt="معاينة الشاشة الكاملة">
+
+    <div id="fullscreenStage" class="image-fs-stage image-crop-stage">
+      <img id="fullscreenModalImg" src="" alt="معاينة الشاشة الكاملة" draggable="false">
+      <video id="fullscreenModalVideo" playsinline muted></video>
+      <div id="fsCropFrame" class="crop-overlay" hidden>
+        <div class="crop-label"><i class="fas fa-arrows-alt"></i> اسحب / غيّر الحجم <span class="crop-size-readout" id="fsCropSize">60×60%</span></div>
+        <span class="crop-handle nh" data-handle="n"></span>
+        <span class="crop-handle ne" data-handle="ne"></span>
+        <span class="crop-handle eh" data-handle="e"></span>
+        <span class="crop-handle se" data-handle="se"></span>
+        <span class="crop-handle sh" data-handle="s"></span>
+        <span class="crop-handle sw" data-handle="sw"></span>
+        <span class="crop-handle wh" data-handle="w"></span>
+        <span class="crop-handle nw" data-handle="nw"></span>
+      </div>
     </div>
   </div>
 

@@ -1,4 +1,0 @@
-SUCCESS
-title: Me at the zoo
-formats: 14
-CODE:0 

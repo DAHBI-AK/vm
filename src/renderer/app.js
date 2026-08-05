@@ -15,19 +15,387 @@ let imageFormat = 'png';
 let frameTime = 0;
 let thumbZoomScale = 1;
 let frameZoomScale = 1;
-let cropPositionPercent = { x: 20, y: 20 };
+let fsZoomScale = 1;
+let fsPan = { x: 0, y: 0 };
+let cropPositionPercent = { x: 50, y: 50 };
 let maskShape = 'rect';
+let imageAspect = 'default';
+let imageOutputSize = 'original';
+let cropToolEnabled = false;
+/** منطقة القص كنِسب مئوية من الحاوية: x,y,w,h */
+let cropRect = { x: 20, y: 20, w: 60, h: 60 };
+
+function getAspectRatioNumber() {
+  if (imageAspect === '1:1') return 1;
+  if (imageAspect === '16:9') return 16 / 9;
+  if (imageAspect === '9:16') return 9 / 16;
+  if (imageAspect === '4:5') return 4 / 5;
+  if (imageAspect === '21:9') return 21 / 9;
+  return null;
+}
 
 function updateMaskShapeUI() {
   const thumbCrop = document.getElementById('thumbCropFrame');
   const frameCrop = document.getElementById('frameCropFrame');
+  const fsCrop = document.getElementById('fsCropFrame');
   let radius = '4px';
   if (maskShape === 'circle') radius = '50%';
   else if (maskShape === 'rounded') radius = '18px';
 
-  [thumbCrop, frameCrop].forEach((el) => {
+  [thumbCrop, frameCrop, fsCrop].forEach((el) => {
     if (el) el.style.borderRadius = radius;
   });
+}
+
+function getAspectCssValue() {
+  if (imageAspect === '1:1') return '1 / 1';
+  if (imageAspect === '9:16') return '9 / 16';
+  if (imageAspect === '4:5') return '4 / 5';
+  if (imageAspect === '16:9') return '16 / 9';
+  if (imageAspect === '21:9') return '21 / 9';
+  if (imageAspect === 'custom') {
+    const w = parseInt(document.getElementById('customAspectWidth')?.value, 10) || 1080;
+    const h = parseInt(document.getElementById('customAspectHeight')?.value, 10) || 1080;
+    return `${w} / ${h}`;
+  }
+  return '';
+}
+
+function updateAspectBadge() {
+  const aspectBadge = document.getElementById('aspectBadge');
+  if (!aspectBadge) return;
+  const aspectLabels = {
+    default: 'حر',
+    '16:9': '16:9',
+    '1:1': '1:1',
+    '9:16': '9:16',
+    '4:5': '4:5',
+    '21:9': '21:9',
+    custom: 'مخصص'
+  };
+  const sizeLabels = {
+    original: 'حجم أصلي',
+    '480': '480px',
+    '720': '720px',
+    '1080': '1080px',
+    custom: 'مخصص'
+  };
+  const a = aspectLabels[imageAspect] || imageAspect;
+  const s = sizeLabels[imageOutputSize] || imageOutputSize;
+  const cropTxt = cropToolEnabled
+    ? ` · قص ${Math.round(cropRect.w)}×${Math.round(cropRect.h)}%`
+    : '';
+  if (imageOutputSize === 'custom') {
+    const w = document.getElementById('customAspectWidth')?.value || 1080;
+    const h = document.getElementById('customAspectHeight')?.value || 1080;
+    aspectBadge.textContent = `📐 ${a} · ${w}×${h}${cropTxt}`;
+  } else {
+    aspectBadge.textContent = `📐 ${a} · ${s}${cropTxt}`;
+  }
+}
+
+function applyCropOverlayGeometry(cropEl, sizeReadoutId) {
+  if (!cropEl) return;
+  cropEl.style.left = `${cropRect.x}%`;
+  cropEl.style.top = `${cropRect.y}%`;
+  cropEl.style.width = `${cropRect.w}%`;
+  cropEl.style.height = `${cropRect.h}%`;
+  const readout = document.getElementById(sizeReadoutId);
+  if (readout) {
+    readout.textContent = `${Math.round(cropRect.w)}×${Math.round(cropRect.h)}%`;
+  }
+}
+
+function syncCropOverlays() {
+  applyCropOverlayGeometry(document.getElementById('thumbCropFrame'), 'thumbCropSize');
+  applyCropOverlayGeometry(document.getElementById('frameCropFrame'), 'frameCropSize');
+  applyCropOverlayGeometry(document.getElementById('fsCropFrame'), 'fsCropSize');
+  updateAspectBadge();
+  updateFsEditorControlsUI();
+}
+
+function setCropToolEnabled(enabled) {
+  cropToolEnabled = !!enabled;
+  const thumbCrop = document.getElementById('thumbCropFrame');
+  const frameCrop = document.getElementById('frameCropFrame');
+  const fsCrop = document.getElementById('fsCropFrame');
+  const thumbBtn = document.getElementById('thumbCropToggleBtn');
+  const frameBtn = document.getElementById('frameCropToggleBtn');
+  const fsBtn = document.getElementById('fsCropToggleBtn');
+
+  if (thumbCrop) thumbCrop.hidden = !cropToolEnabled;
+  if (frameCrop) frameCrop.hidden = !cropToolEnabled;
+  if (fsCrop) fsCrop.hidden = !cropToolEnabled;
+  thumbBtn?.classList.toggle('active', cropToolEnabled);
+  frameBtn?.classList.toggle('active', cropToolEnabled);
+  fsBtn?.classList.toggle('active', cropToolEnabled);
+
+  if (cropToolEnabled) {
+    fitCropRectToAspect();
+    syncCropOverlays();
+    bindInteractiveCrop('thumbCropFrame', 'thumbImgContainer', 'thumbCropSize');
+    bindInteractiveCrop('frameCropFrame', 'frameImgContainer', 'frameCropSize');
+    bindInteractiveCrop('fsCropFrame', 'fullscreenStage', 'fsCropSize');
+  }
+  updateMaskShapeUI();
+  updateAspectBadge();
+}
+
+function syncMainAspectSizePills() {
+  document.querySelectorAll('#aspectPills .aspect-pill, #fsAspectPills .aspect-pill').forEach((pill) => {
+    pill.classList.toggle('active', pill.dataset.aspect === imageAspect);
+  });
+  document.querySelectorAll('#outputSizePills .size-pill, #fsSizePills .size-pill').forEach((pill) => {
+    pill.classList.toggle('active', pill.dataset.size === imageOutputSize);
+  });
+  document.querySelectorAll('#maskShapePills .mask-shape-pill, #fsMaskPills .mask-shape-pill').forEach((pill) => {
+    pill.classList.toggle('active', pill.dataset.shape === maskShape);
+  });
+
+  const mainCustom = document.getElementById('customAspectInputs');
+  const fsCustom = document.getElementById('fsCustomInputs');
+  if (mainCustom) mainCustom.style.display = imageOutputSize === 'custom' ? 'flex' : 'none';
+  if (fsCustom) fsCustom.style.display = imageOutputSize === 'custom' ? 'flex' : 'none';
+
+  const wMain = document.getElementById('customAspectWidth');
+  const hMain = document.getElementById('customAspectHeight');
+  const wFs = document.getElementById('fsCustomWidth');
+  const hFs = document.getElementById('fsCustomHeight');
+  if (wFs && wMain) wFs.value = wMain.value;
+  if (hFs && hMain) hFs.value = hMain.value;
+}
+
+function updateFsEditorControlsUI() {
+  syncMainAspectSizePills();
+  const fsTimeSection = document.getElementById('fsFrameTimeSection');
+  if (fsTimeSection) {
+    fsTimeSection.hidden = imageMode !== 'frame';
+  }
+  const fsRange = document.getElementById('fsFrameTimeRange');
+  const fsInput = document.getElementById('fsFrameTimeInput');
+  const fsBadge = document.getElementById('fsFrameTimeBadge');
+  if (fsRange) {
+    fsRange.max = videoDuration || 100;
+    fsRange.value = frameTime;
+  }
+  const tc = formatTimecode(frameTime);
+  if (fsInput) fsInput.value = tc;
+  if (fsBadge) fsBadge.textContent = tc;
+}
+
+function toggleFsPopover(popId, btnId, force) {
+  const pop = document.getElementById(popId);
+  const btn = document.getElementById(btnId);
+  if (!pop) return;
+  const open = typeof force === 'boolean' ? force : pop.classList.contains('hidden');
+  // أغلق النوافذ الأخرى
+  if (open) {
+    document.getElementById('fsDimPopover')?.classList.add('hidden');
+    document.getElementById('fsTimePopover')?.classList.add('hidden');
+    document.getElementById('fsDimToggleBtn')?.classList.remove('active');
+    document.getElementById('fsTimeToggleBtn')?.classList.remove('active');
+  }
+  pop.classList.toggle('hidden', !open);
+  btn?.classList.toggle('active', open);
+  if (open) updateFsEditorControlsUI();
+}
+
+function closeAllFsPopovers() {
+  document.getElementById('fsDimPopover')?.classList.add('hidden');
+  document.getElementById('fsTimePopover')?.classList.add('hidden');
+  document.getElementById('fsDimToggleBtn')?.classList.remove('active');
+  document.getElementById('fsTimeToggleBtn')?.classList.remove('active');
+}
+
+function updateFsMediaTransform() {
+  const modalImg = document.getElementById('fullscreenModalImg');
+  const modalVideo = document.getElementById('fullscreenModalVideo');
+  const fsZoomLabel = document.getElementById('fsZoomLabel');
+  const transform = `translate(${fsPan.x}px, ${fsPan.y}px) scale(${fsZoomScale})`;
+  if (modalImg) modalImg.style.transform = transform;
+  if (modalVideo) modalVideo.style.transform = transform;
+  if (fsZoomLabel) fsZoomLabel.textContent = `${Math.round(fsZoomScale * 100)}%`;
+}
+
+function updateFsTransform() {
+  updateFsMediaTransform();
+}
+
+async function refreshFullscreenFrameAt(timeSec) {
+  frameTime = Math.max(0, Math.min(Number(timeSec) || 0, videoDuration || Number(timeSec) || 0));
+  if (elements.frameTimeRange) elements.frameTimeRange.value = frameTime;
+  if (elements.frameTimeInput) elements.frameTimeInput.value = formatTimecode(frameTime);
+  if (elements.frameTimeBadge) elements.frameTimeBadge.textContent = formatTimecode(frameTime);
+  updateFsEditorControlsUI();
+
+  const modalVideo = document.getElementById('fullscreenModalVideo');
+  const modalImg = document.getElementById('fullscreenModalImg');
+  const framePlayer = document.getElementById('frameVideoPlayer');
+
+  // حدّث معاينة الاستوديو أيضاً
+  syncFrameCapturePreview(frameTime);
+
+  if (modalVideo && modalVideo.src) {
+    try {
+      modalVideo.pause();
+      modalVideo.currentTime = frameTime;
+      modalVideo.style.display = 'block';
+      if (modalImg) modalImg.style.display = 'none';
+      const modalTitle = document.getElementById('modalImageTitle');
+      if (modalTitle) modalTitle.textContent = `شاشة كاملة — لقطة الفيديو ${formatTimecode(frameTime)}`;
+      return;
+    } catch { /* fallthrough */ }
+  }
+
+  if (framePlayer?.src && framePlayer.videoWidth) {
+    try {
+      framePlayer.currentTime = frameTime;
+      const src = captureVideoFrameDataUrl(framePlayer);
+      if (src && modalImg) {
+        modalImg.src = src;
+        modalImg.style.display = 'block';
+      }
+      if (modalVideo) modalVideo.style.display = 'none';
+    } catch { /* ignore */ }
+  }
+}
+
+function openImageFullscreenEditor() {
+  const modal = document.getElementById('imageFullscreenModal');
+  const modalImg = document.getElementById('fullscreenModalImg');
+  const modalVideo = document.getElementById('fullscreenModalVideo');
+  const modalTitle = document.getElementById('modalImageTitle');
+  if (!modal || !modalImg) return;
+
+  fsZoomScale = 1;
+  fsPan = { x: 0, y: 0 };
+  updateFsEditorControlsUI();
+
+  if (imageMode === 'frame') {
+    if (modalTitle) modalTitle.textContent = `شاشة كاملة — لقطة الفيديو ${formatTimecode(frameTime)}`;
+    const framePlayer = document.getElementById('frameVideoPlayer');
+    const clipPlayer = document.getElementById('clipVideoPlayer');
+    const streamSrc = framePlayer?.src || clipPlayer?.src || '';
+
+    if (streamSrc && modalVideo) {
+      if (modalVideo.src !== streamSrc) modalVideo.src = streamSrc;
+      modalVideo.style.display = 'block';
+      modalImg.style.display = 'none';
+      const seek = () => {
+        try {
+          modalVideo.currentTime = frameTime;
+          modalVideo.pause();
+        } catch { /* ignore */ }
+      };
+      if (modalVideo.readyState >= 1) seek();
+      else modalVideo.addEventListener('loadedmetadata', seek, { once: true });
+    } else {
+      const frameImg = document.getElementById('framePreviewImg');
+      let src = '';
+      if (framePlayer?.src && framePlayer.videoWidth) src = captureVideoFrameDataUrl(framePlayer);
+      if (!src) src = frameImg?.currentSrc || frameImg?.src || currentVideoInfo?.thumbnail || '';
+      if (!src) {
+        showStatus('لا يمكن عرض اللقطة حالياً', 'info');
+        return;
+      }
+      modalImg.src = src;
+      modalImg.style.display = 'block';
+      if (modalVideo) {
+        modalVideo.removeAttribute('src');
+        modalVideo.style.display = 'none';
+      }
+    }
+  } else {
+    if (modalTitle) modalTitle.textContent = 'شاشة كاملة — الصورة المصغرة';
+    const thumbImg = document.getElementById('thumbnailPreviewImg');
+    const src = thumbImg?.currentSrc || thumbImg?.src || currentVideoInfo?.thumbnail;
+    if (!src) {
+      showStatus('لا توجد صورة مصغرة بعد', 'info');
+      return;
+    }
+    modalImg.src = src;
+    modalImg.style.display = 'block';
+    if (modalVideo) {
+      modalVideo.removeAttribute('src');
+      modalVideo.style.display = 'none';
+    }
+  }
+
+  modal.hidden = false;
+  modal.classList.add('show');
+  updateFsTransform();
+
+  // فعّل القص تلقائياً في الشاشة الكاملة ليسهل التعديل
+  if (!cropToolEnabled) setCropToolEnabled(true);
+  else {
+    bindInteractiveCrop('fsCropFrame', 'fullscreenStage', 'fsCropSize');
+    syncCropOverlays();
+  }
+  updateMaskShapeUI();
+}
+
+function openImageFullscreenModal(imgSrc, title = 'معاينة بحجم الشاشة الكاملة') {
+  // توافق خلفي — يفتح المحرر الكامل
+  openImageFullscreenEditor();
+  const modalTitle = document.getElementById('modalImageTitle');
+  const modalImg = document.getElementById('fullscreenModalImg');
+  if (modalTitle && title) modalTitle.textContent = title;
+  if (modalImg && imgSrc && imageMode === 'thumbnail') modalImg.src = imgSrc;
+}
+
+function closeImageFullscreenModal() {
+  const modal = document.getElementById('imageFullscreenModal');
+  const modalVideo = document.getElementById('fullscreenModalVideo');
+  closeAllFsPopovers();
+  if (modal) {
+    modal.hidden = true;
+    modal.classList.remove('show');
+  }
+  if (modalVideo) {
+    try { modalVideo.pause(); } catch { /* ignore */ }
+  }
+  fsZoomScale = 1;
+  fsPan = { x: 0, y: 0 };
+  applyAspectToPreviewScreens();
+  syncCropOverlays();
+  if (imageMode === 'frame') syncFrameCapturePreview(frameTime);
+}
+
+function openCurrentImageFullscreen() {
+  openImageFullscreenEditor();
+}
+
+function fitCropRectToAspect() {
+  const ratio = getAspectRatioNumber();
+  const container = document.getElementById(
+    imageMode === 'frame' ? 'frameImgContainer' : 'thumbImgContainer'
+  );
+  const cw = container?.clientWidth || 640;
+  const ch = container?.clientHeight || 360;
+
+  if (!ratio) {
+    if (cropRect.w < 10 || cropRect.h < 10) {
+      cropRect = { x: 20, y: 20, w: 60, h: 60 };
+    }
+    return;
+  }
+
+  // نريد (w%*cw)/(h%*ch) = ratio ⇒ w/h = ratio * ch/cw
+  const boxRatio = ratio * (ch / cw);
+  let w = 70;
+  let h = w / boxRatio;
+  if (h > 80) {
+    h = 80;
+    w = h * boxRatio;
+  }
+  if (w > 90) {
+    w = 90;
+    h = w / boxRatio;
+  }
+  cropRect.w = Math.max(12, Math.min(95, w));
+  cropRect.h = Math.max(12, Math.min(95, h));
+  cropRect.x = Math.max(0, Math.min(100 - cropRect.w, (100 - cropRect.w) / 2));
+  cropRect.y = Math.max(0, Math.min(100 - cropRect.h, (100 - cropRect.h) / 2));
 }
 
 function applyAspectToPreviewScreens() {
@@ -36,145 +404,191 @@ function applyAspectToPreviewScreens() {
   const framePlayer = document.getElementById('frameVideoPlayer');
   const thumbContainer = document.getElementById('thumbImgContainer');
   const frameContainer = document.getElementById('frameImgContainer');
-  const aspectBadge = document.getElementById('aspectBadge');
   const customInputs = document.getElementById('customAspectInputs');
-  const thumbCrop = document.getElementById('thumbCropFrame');
-  const frameCrop = document.getElementById('frameCropFrame');
 
   if (customInputs) {
-    customInputs.style.display = imageAspect === 'custom' ? 'flex' : 'none';
+    customInputs.style.display = imageOutputSize === 'custom' ? 'flex' : 'none';
   }
 
-  let aspectStyle = '16 / 9';
-  let aspectLabel = '📐 افتراضي (16:9)';
-  let containerMaxWidth = '100%';
-  let containerMaxHeight = '280px';
-
-  if (imageAspect === '1:1') {
-    aspectStyle = '1 / 1';
-    aspectLabel = '📐 مربع (1:1)';
-    containerMaxWidth = '250px';
-    containerMaxHeight = '250px';
-  } else if (imageAspect === '9:16') {
-    aspectStyle = '9 / 16';
-    aspectLabel = '📐 جوال / ريلز (9:16)';
-    containerMaxWidth = '190px';
-    containerMaxHeight = '320px';
-  } else if (imageAspect === '4:5') {
-    aspectStyle = '4 / 5';
-    aspectLabel = '📐 انستغرام (4:5)';
-    containerMaxWidth = '230px';
-    containerMaxHeight = '285px';
-  } else if (imageAspect === '21:9') {
-    aspectStyle = '21 / 9';
-    aspectLabel = '📐 سينمائي (21:9)';
-    containerMaxWidth = '100%';
-    containerMaxHeight = '200px';
-  } else if (imageAspect === 'custom') {
-    const w = parseInt(document.getElementById('customAspectWidth')?.value) || 1080;
-    const h = parseInt(document.getElementById('customAspectHeight')?.value) || 1080;
-    aspectStyle = `${w} / ${h}`;
-    aspectLabel = `📐 مخصص (${w}×${h} px)`;
-    containerMaxWidth = w >= h ? '100%' : '230px';
-    containerMaxHeight = w >= h ? '260px' : '320px';
-  }
-
-  if (aspectBadge) {
-    aspectBadge.textContent = aspectLabel;
-  }
+  const aspectStyle = getAspectCssValue();
+  const isPortrait = imageAspect === '9:16' || imageAspect === '4:5' || imageAspect === '1:1';
 
   [thumbContainer, frameContainer].forEach((cont) => {
-    if (cont) {
-      cont.style.maxWidth = containerMaxWidth;
-      cont.style.maxHeight = containerMaxHeight;
-      cont.style.margin = '0 auto';
-      cont.style.aspectRatio = imageAspect === 'default' ? '' : aspectStyle;
-    }
+    if (!cont) return;
+    cont.style.maxWidth = isPortrait ? '280px' : '100%';
+    cont.style.maxHeight = isPortrait ? '380px' : '320px';
+    cont.style.margin = '0 auto';
+    // لا نفرض object-cover على الصورة أثناء القص الحر — نترك contain ونقص فوقها
+    cont.style.aspectRatio = '';
   });
 
   [thumbnailImg, frameImg, framePlayer].forEach((el) => {
-    if (el) {
-      if (imageAspect === 'default') {
-        el.style.aspectRatio = '';
-        el.style.objectFit = 'contain';
-      } else {
-        el.style.aspectRatio = aspectStyle;
-        el.style.objectFit = 'cover';
-      }
-    }
+    if (!el) return;
+    el.style.aspectRatio = '';
+    el.style.objectFit = 'contain';
+    el.style.width = '100%';
+    el.style.height = 'auto';
+    el.style.maxHeight = '100%';
   });
 
-  const showCrop = imageAspect !== 'default';
-  if (thumbCrop) thumbCrop.style.display = showCrop ? 'block' : 'none';
-  if (frameCrop) frameCrop.style.display = showCrop ? 'block' : 'none';
-
-  if (showCrop) {
-    bindCropDraggable(thumbCrop, thumbContainer);
-    bindCropDraggable(frameCrop, frameContainer);
+  if (cropToolEnabled && getAspectRatioNumber()) {
+    fitCropRectToAspect();
+    syncCropOverlays();
   }
+
   updateMaskShapeUI();
+  applyPreviewZoomTransforms();
+  updateAspectBadge();
 }
 
-function bindCropDraggable(cropFrameEl, containerEl) {
-  if (!cropFrameEl || !containerEl || cropFrameEl.dataset.dragBound) return;
-  cropFrameEl.dataset.dragBound = 'true';
+function applyPreviewZoomTransforms() {
+  const thumbImg = document.getElementById('thumbnailPreviewImg');
+  const frameImg = document.getElementById('framePreviewImg');
+  const framePlayer = document.getElementById('frameVideoPlayer');
+  const thumbZoomLabel = document.getElementById('thumbZoomLabel');
+  const frameZoomLabel = document.getElementById('frameZoomLabel');
 
-  let isDragging = false;
+  if (thumbImg) {
+    thumbImg.style.transformOrigin = 'center center';
+    thumbImg.style.transform = `scale(${thumbZoomScale})`;
+  }
+  if (frameImg) {
+    frameImg.style.transformOrigin = 'center center';
+    frameImg.style.transform = `scale(${frameZoomScale})`;
+  }
+  if (framePlayer) {
+    framePlayer.style.transformOrigin = 'center center';
+    framePlayer.style.transform = `scale(${frameZoomScale})`;
+  }
+  if (thumbZoomLabel) thumbZoomLabel.textContent = `${Math.round(thumbZoomScale * 100)}%`;
+  if (frameZoomLabel) frameZoomLabel.textContent = `${Math.round(frameZoomScale * 100)}%`;
+}
+
+function bindInteractiveCrop(cropId, containerId, sizeReadoutId) {
+  const cropEl = document.getElementById(cropId);
+  const containerEl = document.getElementById(containerId);
+  if (!cropEl || !containerEl || cropEl.dataset.interactiveBound) return;
+  cropEl.dataset.interactiveBound = 'true';
+
+  let mode = null; // 'move' | handle name
   let startX = 0;
   let startY = 0;
-  let initialLeft = 0;
-  let initialTop = 0;
+  let startRect = null;
 
-  cropFrameEl.addEventListener('mousedown', (e) => {
+  const minPct = 8;
+
+  function clampRect(r) {
+    r.w = Math.max(minPct, Math.min(100, r.w));
+    r.h = Math.max(minPct, Math.min(100, r.h));
+    r.x = Math.max(0, Math.min(100 - r.w, r.x));
+    r.y = Math.max(0, Math.min(100 - r.h, r.y));
+    return r;
+  }
+
+  function applyAspectLock(r, anchor) {
+    const ratio = getAspectRatioNumber();
+    if (!ratio || !containerEl.clientWidth || !containerEl.clientHeight) return r;
+    // نسبة العرض/الارتفاع بالبكسل = (w%/h%) * (cw/ch) = ratio
+    // ⇒ w/h = ratio * ch/cw
+    const boxRatio = ratio * (containerEl.clientHeight / containerEl.clientWidth);
+    if (anchor === 'w' || anchor === 'e' || anchor === 'nw' || anchor === 'ne' || anchor === 'sw' || anchor === 'se') {
+      r.h = r.w / boxRatio;
+    } else {
+      r.w = r.h * boxRatio;
+    }
+    return clampRect(r);
+  }
+
+  cropEl.addEventListener('mousedown', (e) => {
+    if (!cropToolEnabled) return;
     e.preventDefault();
-    isDragging = true;
+    e.stopPropagation();
+    const handle = e.target?.dataset?.handle;
+    mode = handle || 'move';
     startX = e.clientX;
     startY = e.clientY;
-    initialLeft = cropFrameEl.offsetLeft;
-    initialTop = cropFrameEl.offsetTop;
+    startRect = { ...cropRect };
     document.body.style.userSelect = 'none';
   });
 
   window.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
+    if (!mode || !startRect || !containerEl.clientWidth) return;
+    const dxPct = ((e.clientX - startX) / containerEl.clientWidth) * 100;
+    const dyPct = ((e.clientY - startY) / containerEl.clientHeight) * 100;
+    let next = { ...startRect };
 
-    const maxLeft = Math.max(0, containerEl.clientWidth - cropFrameEl.clientWidth);
-    const maxTop = Math.max(0, containerEl.clientHeight - cropFrameEl.clientHeight);
+    if (mode === 'move') {
+      next.x = startRect.x + dxPct;
+      next.y = startRect.y + dyPct;
+      next = clampRect(next);
+    } else {
+      if (mode.includes('e')) {
+        next.w = startRect.w + dxPct;
+      }
+      if (mode.includes('s')) {
+        next.h = startRect.h + dyPct;
+      }
+      if (mode.includes('w')) {
+        next.x = startRect.x + dxPct;
+        next.w = startRect.w - dxPct;
+      }
+      if (mode.includes('n')) {
+        next.y = startRect.y + dyPct;
+        next.h = startRect.h - dyPct;
+      }
+      next = applyAspectLock(clampRect(next), mode);
+      // بعد قفل النسبة أعد ضبط الموضع للمقابض الغربية/الشمالية
+      if (mode.includes('w')) {
+        next.x = startRect.x + startRect.w - next.w;
+      }
+      if (mode.includes('n')) {
+        next.y = startRect.y + startRect.h - next.h;
+      }
+      next = clampRect(next);
+    }
 
-    const newLeft = Math.max(0, Math.min(initialLeft + dx, maxLeft));
-    const newTop = Math.max(0, Math.min(initialTop + dy, maxTop));
-
-    cropFrameEl.style.left = `${newLeft}px`;
-    cropFrameEl.style.top = `${newTop}px`;
-
-    cropPositionPercent.x = maxLeft > 0 ? (newLeft / maxLeft) * 100 : 0;
-    cropPositionPercent.y = maxTop > 0 ? (newTop / maxTop) * 100 : 0;
+    cropRect = next;
+    cropPositionPercent.x = cropRect.w > 0 ? (cropRect.x / Math.max(1, 100 - cropRect.w)) * 100 : 50;
+    cropPositionPercent.y = cropRect.h > 0 ? (cropRect.y / Math.max(1, 100 - cropRect.h)) * 100 : 50;
+    syncCropOverlays();
   });
 
   window.addEventListener('mouseup', () => {
-    if (isDragging) {
-      isDragging = false;
+    if (mode) {
+      mode = null;
+      startRect = null;
       document.body.style.userSelect = '';
     }
   });
 }
 
-function openImageFullscreenModal(imgSrc, title = 'معاينة بحجم الشاشة الكاملة') {
-  const modal = document.getElementById('imageFullscreenModal');
-  const modalImg = document.getElementById('fullscreenModalImg');
-  const modalTitle = document.getElementById('modalImageTitle');
-  if (modal && modalImg) {
-    modalImg.src = imgSrc;
-    if (modalTitle) modalTitle.textContent = title;
-    modal.style.display = 'flex';
+function captureVideoFrameDataUrl(videoEl) {
+  if (!videoEl || !videoEl.videoWidth) return '';
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = videoEl.videoWidth;
+    canvas.height = videoEl.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/png');
+  } catch {
+    return '';
   }
 }
 
-function closeImageFullscreenModal() {
-  const modal = document.getElementById('imageFullscreenModal');
-  if (modal) modal.style.display = 'none';
+function bindPreviewPanZoom(containerId, getScale, setScale) {
+  const container = document.getElementById(containerId);
+  if (!container || container.dataset.panBound) return;
+  container.dataset.panBound = 'true';
+
+  container.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const next = e.deltaY < 0
+      ? Math.min(5, getScale() + 0.15)
+      : Math.max(0.4, getScale() - 0.15);
+    setScale(next);
+    applyPreviewZoomTransforms();
+  }, { passive: false });
 }
 let timelineRaf = null;
 const clientInfoCache = new Map();
@@ -284,7 +698,7 @@ const elements = {
   frameTimeBadge: document.getElementById('frameTimeBadge'),
   frameTimeRange: document.getElementById('frameTimeRange'),
   frameTimeInput: document.getElementById('frameTimeInput'),
-  imageModeCards: document.querySelectorAll('.image-mode-card'),
+  imageModeCards: document.querySelectorAll('.image-source-pill, .image-mode-card'),
   imageFormatPills: document.querySelectorAll('.format-pill'),
   presetButtons: document.querySelectorAll('.preset-btn'),
   downloadBtnText: document.getElementById('downloadBtnText'),
@@ -430,57 +844,6 @@ function clampClipRange() {
 
 let clipStreamLoading = false;
 let activeCutHandle = 'start';
-let imageAspect = 'default';
-
-function applyAspectToPreviewScreens() {
-  const thumbnailImg = document.getElementById('thumbnailPreviewImg');
-  const frameImg = document.getElementById('framePreviewImg');
-  const framePlayer = document.getElementById('frameVideoPlayer');
-  const aspectBadge = document.getElementById('aspectBadge');
-  const customInputs = document.getElementById('customAspectInputs');
-
-  if (customInputs) {
-    customInputs.style.display = imageAspect === 'custom' ? 'flex' : 'none';
-  }
-
-  let aspectStyle = 'auto';
-  let aspectLabel = '📐 افتراضي (16:9)';
-
-  if (imageAspect === '1:1') {
-    aspectStyle = '1 / 1';
-    aspectLabel = '📐 مربع (1:1)';
-  } else if (imageAspect === '9:16') {
-    aspectStyle = '9 / 16';
-    aspectLabel = '📐 جوال / ريلز (9:16)';
-  } else if (imageAspect === '4:5') {
-    aspectStyle = '4 / 5';
-    aspectLabel = '📐 انستغرام (4:5)';
-  } else if (imageAspect === '21:9') {
-    aspectStyle = '21 / 9';
-    aspectLabel = '📐 سينمائي (21:9)';
-  } else if (imageAspect === 'custom') {
-    const w = parseInt(document.getElementById('customAspectWidth')?.value) || 1080;
-    const h = parseInt(document.getElementById('customAspectHeight')?.value) || 1080;
-    aspectStyle = `${w} / ${h}`;
-    aspectLabel = `📐 مخصص (${w}×${h} px)`;
-  }
-
-  if (aspectBadge) {
-    aspectBadge.textContent = aspectLabel;
-  }
-
-  [thumbnailImg, frameImg, framePlayer].forEach((el) => {
-    if (el) {
-      if (imageAspect === 'default') {
-        el.style.aspectRatio = '';
-        el.style.objectFit = 'contain';
-      } else {
-        el.style.aspectRatio = aspectStyle;
-        el.style.objectFit = 'cover';
-      }
-    }
-  });
-}
 
 function ensureClipPlayerStream() {
   const player = document.getElementById('clipVideoPlayer');
@@ -553,6 +916,10 @@ function updateImageWorkspaceUI() {
   const thumbnailImg = document.getElementById('thumbnailPreviewImg');
   const frameControls = document.getElementById('frameControls');
 
+  document.querySelectorAll('.image-source-pill, .image-mode-card').forEach((pill) => {
+    pill.classList.toggle('active', pill.dataset.imageMode === imageMode);
+  });
+
   if (imageMode === 'thumbnail') {
     if (thumbnailBox) thumbnailBox.style.display = 'block';
     if (frameControls) frameControls.style.display = 'none';
@@ -565,6 +932,8 @@ function updateImageWorkspaceUI() {
     ensureClipPlayerStream();
     syncFrameCapturePreview(frameTime);
   }
+  updateDownloadButtonText();
+  updateFsEditorControlsUI();
 }
 
 function syncFrameCapturePreview(seconds) {
@@ -896,11 +1265,8 @@ function bindStudioEvents() {
 
   elements.imageModeCards.forEach((card) => {
     card.addEventListener('click', () => {
-      imageMode = card.dataset.imageMode;
-      elements.imageModeCards.forEach((item) => item.classList.remove('active'));
-      card.classList.add('active');
+      imageMode = card.dataset.imageMode || 'thumbnail';
       updateImageWorkspaceUI();
-      updateDownloadButtonText();
     });
   });
 
@@ -929,58 +1295,123 @@ function bindStudioEvents() {
   });
 
   // Zoom & Fullscreen Toolbar Listeners
-  const thumbImgEl = document.getElementById('thumbnailPreviewImg');
-  const frameImgEl = document.getElementById('framePreviewImg');
-  const framePlayerEl = document.getElementById('frameVideoPlayer');
+  document.getElementById('thumbCropToggleBtn')?.addEventListener('click', () => {
+    setCropToolEnabled(!cropToolEnabled);
+    showStatus(cropToolEnabled ? '✂️ القص مفعّل — اسحب الإطار أو غيّر حجمه بالمقابض' : 'تم إيقاف القص', 'info');
+  });
+  document.getElementById('frameCropToggleBtn')?.addEventListener('click', () => {
+    setCropToolEnabled(!cropToolEnabled);
+    showStatus(cropToolEnabled ? '✂️ القص مفعّل — اسحب الإطار أو غيّر حجمه بالمقابض' : 'تم إيقاف القص', 'info');
+  });
 
   document.getElementById('thumbZoomInBtn')?.addEventListener('click', () => {
-    thumbZoomScale = Math.min(3, thumbZoomScale + 0.25);
-    if (thumbImgEl) thumbImgEl.style.transform = `scale(${thumbZoomScale})`;
+    thumbZoomScale = Math.min(5, +(thumbZoomScale + 0.25).toFixed(2));
+    applyPreviewZoomTransforms();
   });
-
   document.getElementById('thumbZoomOutBtn')?.addEventListener('click', () => {
-    thumbZoomScale = Math.max(0.5, thumbZoomScale - 0.25);
-    if (thumbImgEl) thumbImgEl.style.transform = `scale(${thumbZoomScale})`;
+    thumbZoomScale = Math.max(0.4, +(thumbZoomScale - 0.25).toFixed(2));
+    applyPreviewZoomTransforms();
   });
-
   document.getElementById('thumbZoomResetBtn')?.addEventListener('click', () => {
     thumbZoomScale = 1;
-    if (thumbImgEl) thumbImgEl.style.transform = 'scale(1)';
+    applyPreviewZoomTransforms();
   });
-
   document.getElementById('thumbFullscreenBtn')?.addEventListener('click', () => {
-    if (thumbImgEl?.src) {
-      openImageFullscreenModal(thumbImgEl.src, 'معاينة غلاف الفيديو - شاشة كاملة');
-    }
+    imageMode = 'thumbnail';
+    openCurrentImageFullscreen();
   });
 
   document.getElementById('frameZoomInBtn')?.addEventListener('click', () => {
-    frameZoomScale = Math.min(3, frameZoomScale + 0.25);
-    if (frameImgEl) frameImgEl.style.transform = `scale(${frameZoomScale})`;
-    if (framePlayerEl) framePlayerEl.style.transform = `scale(${frameZoomScale})`;
+    frameZoomScale = Math.min(5, +(frameZoomScale + 0.25).toFixed(2));
+    applyPreviewZoomTransforms();
   });
-
   document.getElementById('frameZoomOutBtn')?.addEventListener('click', () => {
-    frameZoomScale = Math.max(0.5, frameZoomScale - 0.25);
-    if (frameImgEl) frameImgEl.style.transform = `scale(${frameZoomScale})`;
-    if (framePlayerEl) framePlayerEl.style.transform = `scale(${frameZoomScale})`;
+    frameZoomScale = Math.max(0.4, +(frameZoomScale - 0.25).toFixed(2));
+    applyPreviewZoomTransforms();
   });
-
   document.getElementById('frameZoomResetBtn')?.addEventListener('click', () => {
     frameZoomScale = 1;
-    if (frameImgEl) frameImgEl.style.transform = 'scale(1)';
-    if (framePlayerEl) framePlayerEl.style.transform = 'scale(1)';
+    applyPreviewZoomTransforms();
+  });
+  document.getElementById('frameFullscreenBtn')?.addEventListener('click', () => {
+    imageMode = 'frame';
+    openCurrentImageFullscreen();
   });
 
-  document.getElementById('frameFullscreenBtn')?.addEventListener('click', () => {
-    if (frameImgEl?.src && frameImgEl.style.display !== 'none') {
-      openImageFullscreenModal(frameImgEl.src, `معاينة لقطة الفريم - شاشة كاملة`);
-    } else if (currentVideoInfo?.thumbnail) {
-      openImageFullscreenModal(currentVideoInfo.thumbnail, 'معاينة اللقطة - شاشة كاملة');
+  bindPreviewPanZoom('thumbImgContainer', () => thumbZoomScale, (v) => { thumbZoomScale = v; });
+  bindPreviewPanZoom('frameImgContainer', () => frameZoomScale, (v) => { frameZoomScale = v; });
+
+  // Fullscreen modal zoom / pan / editor controls
+  document.getElementById('closeFullscreenModalBtn')?.addEventListener('click', closeImageFullscreenModal);
+  document.getElementById('fsCropToggleBtn')?.addEventListener('click', () => {
+    closeAllFsPopovers();
+    setCropToolEnabled(!cropToolEnabled);
+  });
+  document.getElementById('fsDimToggleBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleFsPopover('fsDimPopover', 'fsDimToggleBtn');
+  });
+  document.getElementById('fsTimeToggleBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleFsPopover('fsTimePopover', 'fsTimeToggleBtn');
+  });
+  document.getElementById('fsDimPopover')?.addEventListener('click', (e) => e.stopPropagation());
+  document.getElementById('fsTimePopover')?.addEventListener('click', (e) => e.stopPropagation());
+  document.getElementById('imageFullscreenModal')?.addEventListener('click', (e) => {
+    if (!e.target.closest('.fs-dim-wrap') && !e.target.closest('.fs-time-wrap')) {
+      closeAllFsPopovers();
     }
   });
+  document.getElementById('fsZoomInBtn')?.addEventListener('click', () => {
+    fsZoomScale = Math.min(8, +(fsZoomScale + 0.25).toFixed(2));
+    updateFsTransform();
+  });
+  document.getElementById('fsZoomOutBtn')?.addEventListener('click', () => {
+    fsZoomScale = Math.max(0.25, +(fsZoomScale - 0.25).toFixed(2));
+    updateFsTransform();
+  });
+  document.getElementById('fsZoomResetBtn')?.addEventListener('click', () => {
+    fsZoomScale = 1;
+    fsPan = { x: 0, y: 0 };
+    updateFsTransform();
+  });
 
-  document.getElementById('closeFullscreenModalBtn')?.addEventListener('click', closeImageFullscreenModal);
+  const fsStage = document.getElementById('fullscreenStage');
+  if (fsStage && !fsStage.dataset.bound) {
+    fsStage.dataset.bound = 'true';
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    fsStage.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      fsZoomScale = e.deltaY < 0
+        ? Math.min(8, +(fsZoomScale + 0.2).toFixed(2))
+        : Math.max(0.25, +(fsZoomScale - 0.2).toFixed(2));
+      updateFsTransform();
+    }, { passive: false });
+
+    fsStage.addEventListener('mousedown', (e) => {
+      if (e.target.closest('.crop-overlay') || e.target.closest('.crop-handle')) return;
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      fsStage.style.cursor = 'grabbing';
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      fsPan.x += e.clientX - lastX;
+      fsPan.y += e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      updateFsTransform();
+    });
+    window.addEventListener('mouseup', () => {
+      dragging = false;
+      if (fsStage) fsStage.style.cursor = 'grab';
+    });
+  }
+
   document.getElementById('imageFullscreenModal')?.addEventListener('click', (e) => {
     if (e.target.id === 'imageFullscreenModal') closeImageFullscreenModal();
   });
@@ -988,37 +1419,71 @@ function bindStudioEvents() {
     if (e.key === 'Escape') closeImageFullscreenModal();
   });
 
-  document.querySelectorAll('.aspect-pill').forEach((pill) => {
+  const applyAspectFromPill = (aspect) => {
+    imageAspect = aspect || 'default';
+    if (cropToolEnabled) {
+      fitCropRectToAspect();
+      syncCropOverlays();
+    }
+    applyAspectToPreviewScreens();
+    updateFsEditorControlsUI();
+  };
+
+  document.querySelectorAll('#aspectPills .aspect-pill, #fsAspectPills .aspect-pill').forEach((pill) => {
+    pill.addEventListener('click', () => applyAspectFromPill(pill.dataset.aspect));
+  });
+
+  document.querySelectorAll('#outputSizePills .size-pill, #fsSizePills .size-pill').forEach((pill) => {
     pill.addEventListener('click', () => {
-      imageAspect = pill.dataset.aspect;
-      document.querySelectorAll('.aspect-pill').forEach((item) => item.classList.remove('active'));
-      pill.classList.add('active');
+      imageOutputSize = pill.dataset.size || 'original';
       applyAspectToPreviewScreens();
+      updateFsEditorControlsUI();
     });
   });
 
-  document.querySelectorAll('.mask-shape-pill').forEach((pill) => {
+  document.querySelectorAll('#maskShapePills .mask-shape-pill, #fsMaskPills .mask-shape-pill').forEach((pill) => {
     pill.addEventListener('click', () => {
-      maskShape = pill.dataset.shape;
-      document.querySelectorAll('.mask-shape-pill').forEach((item) => item.classList.remove('active'));
-      pill.classList.add('active');
+      maskShape = pill.dataset.shape || 'rect';
       updateMaskShapeUI();
+      updateFsEditorControlsUI();
     });
   });
+
+  const syncCustomDims = (fromFs) => {
+    const wMain = document.getElementById('customAspectWidth');
+    const hMain = document.getElementById('customAspectHeight');
+    const wFs = document.getElementById('fsCustomWidth');
+    const hFs = document.getElementById('fsCustomHeight');
+    if (fromFs) {
+      if (wMain && wFs) wMain.value = wFs.value;
+      if (hMain && hFs) hMain.value = hFs.value;
+    } else {
+      if (wFs && wMain) wFs.value = wMain.value;
+      if (hFs && hMain) hFs.value = hMain.value;
+    }
+    updateAspectBadge();
+    updateFsEditorControlsUI();
+  };
 
   ['customAspectWidth', 'customAspectHeight'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.addEventListener('input', () => {
-        if (imageAspect === 'custom') {
-          applyAspectToPreviewScreens();
-        }
-      });
-    }
+    document.getElementById(id)?.addEventListener('input', () => syncCustomDims(false));
+  });
+  ['fsCustomWidth', 'fsCustomHeight'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', () => syncCustomDims(true));
   });
 
-  
-  }
+  const onFsFrameTime = () => {
+    const fsRange = document.getElementById('fsFrameTimeRange');
+    refreshFullscreenFrameAt(Number(fsRange?.value) || 0);
+  };
+  document.getElementById('fsFrameTimeRange')?.addEventListener('input', onFsFrameTime);
+  document.getElementById('fsFrameTimeInput')?.addEventListener('change', () => {
+    const fsInput = document.getElementById('fsFrameTimeInput');
+    refreshFullscreenFrameAt(parseTimecode(fsInput?.value || '0'));
+  });
+
+  applyAspectToPreviewScreens();
+}
 
 // Show status
 function hideClipboardPrompt() {
@@ -1037,6 +1502,7 @@ function showClipboardPrompt(url) {
   }
 
   pendingClipboardUrl = url;
+  addToCopiedLinksHistory(url);
   if (elements.clipboardPromptUrl) {
     elements.clipboardPromptUrl.textContent = url;
   }
@@ -1052,6 +1518,7 @@ async function acceptClipboardUrl() {
   hideClipboardPrompt();
   navigateTo('downloader');
   elements.videoUrl.value = url;
+  addToCopiedLinksHistory(url);
   await fetchVideoInfo();
 }
 
@@ -1489,11 +1956,14 @@ async function startDownload() {
       imageMode,
       imageFormat,
       frameTime,
-      aspectRatio: imageAspect,
+      aspectRatio: imageAspect === 'custom' ? 'default' : imageAspect,
+      outputSize: imageOutputSize,
       maskShape,
+      cropEnabled: cropToolEnabled,
+      cropRect: cropToolEnabled ? { ...cropRect } : null,
       cropPos: cropPositionPercent,
-      customWidth: parseInt(document.getElementById('customAspectWidth')?.value) || 1080,
-      customHeight: parseInt(document.getElementById('customAspectHeight')?.value) || 1080,
+      customWidth: parseInt(document.getElementById('customAspectWidth')?.value, 10) || 1080,
+      customHeight: parseInt(document.getElementById('customAspectHeight')?.value, 10) || 1080,
       thumbnailUrl: currentVideoInfo.thumbnail,
       filename
     };
@@ -1581,6 +2051,7 @@ async function startDownload() {
     if (result.success) {
       lastDownloadedPath = result.path;
       updateCircularProgress(100);
+      updateQuickPlayButtonLabel();
       if (elements.quickPlayBtn) {
         elements.quickPlayBtn.classList.remove('hidden');
       }
@@ -1602,6 +2073,10 @@ async function startDownload() {
       elements.progressContainer.classList.remove('show');
       elements.successMessage.classList.add('show');
       elements.successPath.textContent = result.path;
+      const openLabel = document.getElementById('openDownloadedFileLabel');
+      if (openLabel) {
+        openLabel.textContent = studioMode === 'image' ? 'فتح الصورة' : 'فتح الملف';
+      }
       showStatus(t('downloadSuccessStatus'), 'success');
       showDownloadNotification(currentVideoInfo?.title, result.path);
     } else {
@@ -1852,6 +2327,8 @@ async function pasteFromClipboard() {
   try {
     const text = await navigator.clipboard.readText();
     elements.videoUrl.value = text;
+    const urls = extractUrlsFromText(text);
+    urls.forEach((u) => addToCopiedLinksHistory(u));
     fetchVideoInfo();
   } catch (error) {
     showStatus(t('errClipboard'), 'error');
@@ -2374,6 +2851,7 @@ function addUrlsToQueue() {
     try {
       const parsed = new URL(line.startsWith('http') ? line : `https://${line}`);
       const urlStr = parsed.toString();
+      addToCopiedLinksHistory(urlStr);
       if (!downloadQueue.some((q) => q.url === urlStr)) {
         downloadQueue.push({
           id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
@@ -2477,6 +2955,156 @@ function updateAutoPasteBtn() {
   }
 }
 
+// ─── Copied links history (اختيار من الروابط المنسوخة) ───────────────────────
+const COPIED_LINKS_KEY = 'vm_copied_links_history';
+const COPIED_LINKS_MAX = 40;
+let copiedLinksHistory = [];
+
+function loadCopiedLinksHistory() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(COPIED_LINKS_KEY) || '[]');
+    copiedLinksHistory = Array.isArray(raw) ? raw.filter((u) => typeof u === 'string') : [];
+  } catch {
+    copiedLinksHistory = [];
+  }
+}
+
+function saveCopiedLinksHistory() {
+  localStorage.setItem(COPIED_LINKS_KEY, JSON.stringify(copiedLinksHistory.slice(0, COPIED_LINKS_MAX)));
+}
+
+function extractUrlsFromText(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return [];
+  const found = [];
+  const seen = new Set();
+  const matches = raw.match(/https?:\/\/[^\s<>"']+/gi) || [];
+  for (const m of matches) {
+    const cleaned = m.replace(/[.,;!?)\]]+$/g, '');
+    try {
+      const url = new URL(cleaned).toString();
+      if (!seen.has(url)) {
+        seen.add(url);
+        found.push(url);
+      }
+    } catch { /* skip */ }
+  }
+  if (found.length === 0) {
+    try {
+      const url = new URL(raw.startsWith('http') ? raw : `https://${raw}`).toString();
+      found.push(url);
+    } catch { /* skip */ }
+  }
+  return found;
+}
+
+function addToCopiedLinksHistory(url) {
+  const urls = Array.isArray(url) ? url : [url];
+  let changed = false;
+  for (const raw of urls) {
+    try {
+      const u = new URL(String(raw).trim()).toString();
+      copiedLinksHistory = copiedLinksHistory.filter((x) => x !== u);
+      copiedLinksHistory.unshift(u);
+      changed = true;
+    } catch { /* skip */ }
+  }
+  if (!changed) return;
+  if (copiedLinksHistory.length > COPIED_LINKS_MAX) {
+    copiedLinksHistory = copiedLinksHistory.slice(0, COPIED_LINKS_MAX);
+  }
+  saveCopiedLinksHistory();
+  renderCopiedLinksDropdown();
+}
+
+function updateCopiedLinksBadge() {
+  const badge = document.getElementById('copiedLinksBadge');
+  if (!badge) return;
+  const n = copiedLinksHistory.length;
+  if (n > 0) {
+    badge.hidden = false;
+    badge.textContent = n > 99 ? '99+' : String(n);
+  } else {
+    badge.hidden = true;
+  }
+}
+
+function renderCopiedLinksDropdown() {
+  const list = document.getElementById('copiedLinksList');
+  updateCopiedLinksBadge();
+  if (!list) return;
+
+  if (copiedLinksHistory.length === 0) {
+    list.innerHTML = '<p class="copied-links-empty">لا توجد روابط منسوخة بعد — انسخ رابطاً أو فعّل اللصق التلقائي</p>';
+    return;
+  }
+
+  list.innerHTML = copiedLinksHistory.map((url, idx) => {
+    let host = '';
+    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { host = 'رابط'; }
+    return `
+      <button type="button" class="copied-link-item" data-url="${escapeHtml(url)}" title="${escapeHtml(url)}">
+        <span class="copied-link-idx">${idx + 1}</span>
+        <span class="copied-link-meta">
+          <strong>${escapeHtml(host)}</strong>
+          <small>${escapeHtml(url)}</small>
+        </span>
+        <i class="fas fa-search"></i>
+      </button>
+    `;
+  }).join('');
+}
+
+function toggleCopiedLinksDropdown(force) {
+  const dropdown = document.getElementById('copiedLinksDropdown');
+  const btn = document.getElementById('copiedLinksBtn');
+  if (!dropdown) return;
+  const open = typeof force === 'boolean' ? force : dropdown.classList.contains('hidden');
+  dropdown.classList.toggle('hidden', !open);
+  btn?.classList.toggle('active', open);
+  if (open) renderCopiedLinksDropdown();
+}
+
+function selectCopiedLinkAndSearch(url) {
+  if (!url || !elements.videoUrl) return;
+  elements.videoUrl.value = url;
+  toggleCopiedLinksDropdown(false);
+  addToCopiedLinksHistory(url);
+  fetchVideoInfo();
+}
+
+function bindCopiedLinksUI() {
+  loadCopiedLinksHistory();
+  renderCopiedLinksDropdown();
+
+  document.getElementById('copiedLinksBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleCopiedLinksDropdown();
+  });
+
+  document.getElementById('clearCopiedLinksBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    copiedLinksHistory = [];
+    saveCopiedLinksHistory();
+    renderCopiedLinksDropdown();
+    showStatus('تم مسح قائمة الروابط المنسوخة', 'info');
+  });
+
+  document.getElementById('copiedLinksList')?.addEventListener('click', (e) => {
+    const item = e.target.closest('.copied-link-item');
+    if (!item?.dataset?.url) return;
+    e.preventDefault();
+    selectCopiedLinkAndSearch(item.dataset.url);
+  });
+
+  document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('copiedLinksWrap');
+    if (wrap && !wrap.contains(e.target)) {
+      toggleCopiedLinksDropdown(false);
+    }
+  });
+}
+
 function addAutoPasteUrlsToQueue(urls) {
   if (!autoPasteBatchEnabled || !Array.isArray(urls) || urls.length === 0) return;
 
@@ -2486,6 +3114,7 @@ function addAutoPasteUrlsToQueue(urls) {
   for (const raw of urls) {
     try {
       const urlStr = new URL(String(raw).trim()).toString();
+      addToCopiedLinksHistory(urlStr);
       if (downloadQueue.some((q) => q.url === urlStr)) continue;
 
       downloadQueue.push({
@@ -2693,13 +3322,43 @@ elements.pasteAddBatchBtn?.addEventListener('click', pasteAndAddUrlsToQueue);
 elements.startBatchBtn?.addEventListener('click', startBatchProcessing);
 elements.clearBatchBtn?.addEventListener('click', clearBatchQueue);
 
-const handleQuickPlay = () => {
-  if (lastDownloadedPath) {
-    window.electronAPI.openPath(lastDownloadedPath);
+const handleQuickPlay = async () => {
+  if (!lastDownloadedPath) {
+    showStatus('لا يوجد ملف محمّل بعد', 'info');
+    return;
+  }
+  try {
+    const result = await window.electronAPI.openPath(lastDownloadedPath);
+    if (result && result.success === false) {
+      showStatus(result.error || 'تعذر فتح الملف — تم فتح المجلد', 'error');
+    }
+  } catch (err) {
+    showStatus(err.message || 'تعذر فتح الملف', 'error');
   }
 };
+
+function updateQuickPlayButtonLabel() {
+  const label = document.getElementById('quickPlayBtnLabel');
+  const btn = elements.quickPlayBtn;
+  const isImage = studioMode === 'image' || /\.(png|jpe?g|webp|gif|bmp)$/i.test(lastDownloadedPath || '');
+  if (label) label.textContent = isImage ? 'فتح الصورة' : 'فتح الملف';
+  if (btn) {
+    btn.title = isImage ? 'فتح الصورة المحمّلة' : 'فتح الملف المحمّل';
+    const icon = btn.querySelector('i');
+    if (icon) icon.className = isImage ? 'fas fa-image' : 'fas fa-external-link-alt';
+  }
+}
+
 elements.quickPlayBtn?.addEventListener('click', handleQuickPlay);
 elements.settingsQuickPlayBtn?.addEventListener('click', handleQuickPlay);
+document.getElementById('openDownloadedFileBtn')?.addEventListener('click', handleQuickPlay);
+document.getElementById('showDownloadedFolderBtn')?.addEventListener('click', () => {
+  if (lastDownloadedPath) {
+    window.electronAPI.showItemInFolder(lastDownloadedPath);
+  } else {
+    showStatus('لا يوجد ملف محمّل بعد', 'info');
+  }
+});
 
 // Navigation
 elements.navItems.forEach(item => {
@@ -2888,6 +3547,7 @@ async function initializeApp() {
 
   bindStudioEvents();
   bindClipboardEvents();
+  bindCopiedLinksUI();
   bindSettingsEvents();
   await window.electronAPI.setClipboardWatch?.(isClipboardWatchEnabled());
   await loadDefaultDownloadPath();

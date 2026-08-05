@@ -643,12 +643,70 @@ elements.batchUrlsText?.addEventListener('input', updateBatchQueueFromText);
 
 function updateBatchQueueFromText() {
   const lines = elements.batchUrlsText.value.split('\n').map(l => l.trim()).filter(l => /^https?:\/\//i.test(l));
-  batchQueue = [...new Set(lines)];
+  const uniqueUrls = [...new Set(lines)];
+  
+  batchQueue = uniqueUrls.map(url => {
+    const existing = batchQueue.find(item => typeof item === 'object' && item.url === url);
+    if (existing) return existing;
+    return {
+      id: 'batch_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+      url: url,
+      status: 'pending',
+      quality: 'best',
+      type: 'video-audio',
+      filename: '',
+      showEditor: false
+    };
+  });
+
   renderBatchQueueList();
   if (elements.startBatchBtn) {
     elements.startBatchBtn.disabled = batchQueue.length === 0;
   }
 }
+
+window.toggleBatchQueueItemEditor = function(id, event) {
+  if (event) event.stopPropagation();
+  const item = batchQueue.find(q => q.id === id || q.url === id);
+  if (item) {
+    item.showEditor = !item.showEditor;
+    renderBatchQueueList();
+  }
+};
+
+window.removeBatchItem = function(index, event) {
+  if (event) event.stopPropagation();
+  if (typeof index === 'number') {
+    batchQueue.splice(index, 1);
+  } else {
+    batchQueue = batchQueue.filter(q => q.id !== index && q.url !== index);
+  }
+  if (elements.batchUrlsText) {
+    elements.batchUrlsText.value = batchQueue.map(q => typeof q === 'string' ? q : q.url).join('\n');
+  }
+  renderBatchQueueList();
+};
+
+window.saveBatchQueueItemEditor = function(id, event) {
+  if (event) event.stopPropagation();
+  const item = batchQueue.find(q => q.id === id || q.url === id);
+  if (!item) return;
+
+  const urlInput = document.getElementById(`edit_mob_url_${id}`);
+  const qualitySelect = document.getElementById(`edit_mob_quality_${id}`);
+  const typeSelect = document.getElementById(`edit_mob_type_${id}`);
+  const filenameInput = document.getElementById(`edit_mob_filename_${id}`);
+
+  if (urlInput && urlInput.value.trim()) {
+    item.url = urlInput.value.trim();
+  }
+  if (qualitySelect) item.quality = qualitySelect.value;
+  if (typeSelect) item.type = typeSelect.value;
+  if (filenameInput) item.filename = filenameInput.value.trim();
+
+  item.showEditor = false;
+  renderBatchQueueList();
+};
 
 function renderBatchQueueList() {
   if (!elements.batchQueueList) return;
@@ -657,19 +715,75 @@ function renderBatchQueueList() {
     return;
   }
 
-  elements.batchQueueList.innerHTML = batchQueue.map((url, idx) => `
-    <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--bg-input); border-radius:8px; margin-bottom:6px; font-size:12px;">
-      <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:80%;">${idx + 1}. ${url}</span>
-      <button type="button" onclick="removeBatchItem(${idx})" style="background:none; border:none; color:#ef4444; font-size:14px; cursor:pointer;"><i class="fas fa-trash"></i></button>
-    </div>
-  `).join('');
-}
+  elements.batchQueueList.innerHTML = batchQueue.map((itemObj, idx) => {
+    const item = typeof itemObj === 'string' ? { id: 'item_' + idx, url: itemObj, status: 'pending', quality: 'best', type: 'video-audio' } : itemObj;
+    const statusText = item.status === 'pending' ? 'انتظار' : (item.status === 'downloading' ? 'جاري التحميل...' : (item.status === 'done' ? 'اكتمل ✓' : 'خطأ ✗'));
+    const isCustomized = (item.quality && item.quality !== 'best') || (item.type && item.type !== 'video-audio') || item.filename;
+    const badgeText = isCustomized ? ` [${item.type === 'audio' ? 'MP3' : item.quality + 'p'}]` : '';
 
-window.removeBatchItem = function(index) {
-  batchQueue.splice(index, 1);
-  elements.batchUrlsText.value = batchQueue.join('\n');
-  updateBatchQueueFromText();
-};
+    return `
+      <div class="batch-item-wrapper" style="margin-bottom: 6px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--bg-input); border-radius:8px; font-size:12px; gap:8px; cursor:pointer;" onclick="toggleBatchQueueItemEditor('${item.id}', event)">
+          <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;">
+            <span style="font-weight:bold; color:var(--primary);">${idx + 1}.</span> ${item.url} <strong style="color:var(--primary);">${badgeText}</strong>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            <span class="batch-item-status ${item.status || 'pending'}" style="padding:3px 8px; border-radius:12px; font-size:11px; font-weight:bold; background:rgba(234,179,8,0.15); color:#facc15;">${statusText}</span>
+            <button type="button" onclick="toggleBatchQueueItemEditor('${item.id}', event)" class="btn-batch-mini-edit" style="display:inline-flex; align-items:center; gap:3px; padding:3px 8px; background:rgba(0,242,254,0.12); border:1px solid rgba(0,242,254,0.35); border-radius:6px; color:#00f2fe; font-size:11px; font-weight:bold; cursor:pointer;" title="إعدادات تعديل">
+              <i class="fas fa-cog"></i> <span>إعدادات</span>
+            </button>
+            <button type="button" onclick="removeBatchItem('${item.id}', event)" class="btn-batch-mini-delete" style="display:inline-flex; align-items:center; gap:3px; padding:3px 8px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.35); border-radius:6px; color:#fca5a5; font-size:11px; font-weight:bold; cursor:pointer;" title="حذف">
+              <i class="fas fa-trash-alt"></i> <span>حذف</span>
+            </button>
+          </div>
+        </div>
+
+        ${item.showEditor ? `
+          <div class="batch-item-editor" style="margin-top:6px; padding:12px; background:rgba(11,15,25,0.95); border:1px solid var(--primary); border-radius:8px; font-size:12px; display:flex; flex-direction:column; gap:8px;" onclick="event.stopPropagation()">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong style="color:var(--primary);"><i class="fas fa-sliders-h"></i> إعدادات تعديل الرابط رقم ${idx + 1}</strong>
+              <button type="button" onclick="toggleBatchQueueItemEditor('${item.id}', event)" style="background:none; border:none; color:var(--text-secondary); cursor:pointer;"><i class="fas fa-times"></i></button>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:4px; color:var(--text-secondary);">تعديل الرابط:</label>
+              <input type="text" id="edit_mob_url_${item.id}" value="${item.url}" style="width:100%; padding:6px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:#fff; font-size:12px;">
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+              <div>
+                <label style="display:block; margin-bottom:4px; color:var(--text-secondary);">الجودة:</label>
+                <select id="edit_mob_quality_${item.id}" style="width:100%; padding:6px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:#fff; font-size:12px;">
+                  <option value="best" ${(item.quality || 'best') === 'best' ? 'selected' : ''}>أفضل جودة (Best HD)</option>
+                  <option value="1080" ${item.quality === '1080' ? 'selected' : ''}>1080p Full HD</option>
+                  <option value="720" ${item.quality === '720' ? 'selected' : ''}>720p HD</option>
+                  <option value="480" ${item.quality === '480' ? 'selected' : ''}>480p</option>
+                  <option value="360" ${item.quality === '360' ? 'selected' : ''}>360p</option>
+                </select>
+              </div>
+              <div>
+                <label style="display:block; margin-bottom:4px; color:var(--text-secondary);">نوع التحميل:</label>
+                <select id="edit_mob_type_${item.id}" style="width:100%; padding:6px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:#fff; font-size:12px;">
+                  <option value="video-audio" ${(item.type || 'video-audio') === 'video-audio' ? 'selected' : ''}>فيديو + صوت</option>
+                  <option value="video-only" ${item.type === 'video-only' ? 'selected' : ''}>فيديو فقط</option>
+                  <option value="audio" ${item.type === 'audio' ? 'selected' : ''}>صوت MP3</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style="display:block; margin-bottom:4px; color:var(--text-secondary);">اسم الملف المخصص (اختياري):</label>
+              <input type="text" id="edit_mob_filename_${item.id}" value="${item.filename || ''}" placeholder="اسم الملف..." style="width:100%; padding:6px 10px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:#fff; font-size:12px;">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:4px;">
+              <button type="button" onclick="saveBatchQueueItemEditor('${item.id}', event)" style="background:var(--primary); color:#000; padding:6px 14px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
+                <i class="fas fa-check"></i> <span>حفظ التعديلات</span>
+              </button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
 
 // Start Batch Downloads
 elements.startBatchBtn?.addEventListener('click', async () => {
@@ -683,8 +797,11 @@ elements.startBatchBtn?.addEventListener('click', async () => {
   let completed = 0;
 
   for (let i = 0; i < total; i++) {
-    const url = batchQueue[i];
-    elements.progressInfo.textContent = `جاري تحميل الفيديو (${i + 1}/${total}): ${url.substring(0, 30)}...`;
+    const item = typeof batchQueue[i] === 'string' ? { url: batchQueue[i], type: 'video-audio', quality: 'best' } : batchQueue[i];
+    item.status = 'downloading';
+    renderBatchQueueList();
+
+    elements.progressInfo.textContent = `جاري تحميل الفيديو (${i + 1}/${total}): ${item.url.substring(0, 30)}...`;
     const pct = Math.round(((i + 1) / total) * 100);
     elements.progressPercent.textContent = `${pct}%`;
     elements.progressFill.style.width = `${pct}%`;
@@ -693,13 +810,26 @@ elements.startBatchBtn?.addEventListener('click', async () => {
       const res = await fetch('/api/download', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, type: 'video-audio', height: 'best' })
+        body: JSON.stringify({
+          url: item.url,
+          type: item.type || 'video-audio',
+          height: item.quality || 'best',
+          filename: item.filename || undefined,
+          outputDir: elements.customDownloadPath?.value || 'B:\\'
+        })
       });
       const data = await res.json();
-      if (data.success) completed++;
+      if (data.success) {
+        completed++;
+        item.status = 'done';
+      } else {
+        item.status = 'error';
+      }
     } catch (err) {
-      console.warn(`Batch download error for ${url}:`, err);
+      console.warn(`Batch download error for ${item.url}:`, err);
+      item.status = 'error';
     }
+    renderBatchQueueList();
   }
 
   isBatchProcessing = false;
@@ -707,7 +837,7 @@ elements.startBatchBtn?.addEventListener('click', async () => {
   alert(`اكتمل تحميل السلسلة بنجاح (${completed}/${total})`);
   batchQueue = [];
   elements.batchUrlsText.value = '';
-  updateBatchQueueFromText();
+  renderBatchQueueList();
 });
 
 function updateHistoryUI() {
@@ -917,6 +1047,19 @@ function applyLanguage(lang) {
   // Update Global Settings Badge
   updateGlobalSettingsBadge();
 }
+
+// Tab View Navigation Engine
+document.querySelectorAll('.nav-button').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.nav-button').forEach((b) => b.classList.remove('active'));
+    document.querySelectorAll('.tab-view').forEach((tv) => tv.classList.remove('active'));
+
+    btn.classList.add('active');
+    const targetTab = document.getElementById(`${tab}Tab`);
+    if (targetTab) targetTab.classList.add('active');
+  });
+});
 
 elements.languageSelect?.addEventListener('change', (e) => {
   const newLang = e.target.value;

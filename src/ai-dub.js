@@ -167,29 +167,20 @@ async function googleTtsToFile(text, langCode, outputPath) {
     }
   };
 
-  if (chunks.length === 1) {
-    const buffer = await fetchTtsChunk(chunks[0]);
-    fs.writeFileSync(outputPath, buffer);
-    return outputPath;
-  }
-
-  const partPaths = [];
+  const buffers = [];
   for (let index = 0; index < chunks.length; index += 1) {
-    const partPath = `${outputPath}.part${index}.mp3`;
-    const buffer = await fetchTtsChunk(chunks[index]);
-    fs.writeFileSync(partPath, buffer);
-    partPaths.push(partPath);
+    const buf = await fetchTtsChunk(chunks[index]);
+    if (buf && buf.length > 0) {
+      buffers.push(buf);
+    }
   }
 
-  await concatAudioFiles(partPaths, outputPath, path.dirname(outputPath));
-  partPaths.forEach((partPath) => {
-    try {
-      fs.unlinkSync(partPath);
-    } catch {
-      // ignore
-    }
-  });
+  if (buffers.length === 0) {
+    throw new Error('فشل جلب ملفات الصوت للدبلجة');
+  }
 
+  const combined = Buffer.concat(buffers);
+  fs.writeFileSync(outputPath, combined);
   return outputPath;
 }
 
@@ -432,7 +423,83 @@ function runFfmpeg(ffmpegPath, args) {
 }
 
 async function generateSyntheticCues(ffmpegPath, videoPath, totalDuration = 30, targetLang = 'ar') {
-  return [];
+  return new Promise((resolve) => {
+    const child = spawn(ffmpegPath, [
+      '-hide_banner',
+      '-i', videoPath,
+      '-af', 'silencedetect=noise=-30dB:d=0.5',
+      '-f', 'null',
+      '-'
+    ], { windowsHide: true });
+
+    let stderr = '';
+    child.stderr.on('data', (d) => { stderr += d.toString(); });
+
+    child.on('close', () => {
+      const duration = Math.max(3, totalDuration || 30);
+      const silenceStarts = [];
+      const silenceEnds = [];
+
+      const startMatches = [...stderr.matchAll(/silence_start:\s*([\d.]+)/g)];
+      const endMatches = [...stderr.matchAll(/silence_end:\s*([\d.]+)/g)];
+
+      startMatches.forEach((m) => silenceStarts.push(parseFloat(m[1])));
+      endMatches.forEach((m) => silenceEnds.push(parseFloat(m[1])));
+
+      const speechIntervals = [];
+      let lastEnd = 0;
+
+      for (let i = 0; i < silenceStarts.length; i++) {
+        const startSilence = silenceStarts[i];
+        const endSilence = silenceEnds[i] || startSilence;
+
+        if (startSilence > lastEnd + 0.5) {
+          speechIntervals.push({ start: lastEnd, end: startSilence });
+        }
+        lastEnd = endSilence;
+      }
+
+      if (lastEnd < duration - 0.8) {
+        speechIntervals.push({ start: lastEnd, end: duration });
+      }
+
+      if (speechIntervals.length === 0) {
+        const step = 5;
+        for (let t = 0; t < duration; t += step) {
+          speechIntervals.push({
+            start: t,
+            end: Math.min(t + step - 0.4, duration)
+          });
+        }
+      }
+
+      const samplePhrases = targetLang.startsWith('ar')
+        ? ['أهلاً بكم في هذا المقطع التوضيحي', 'نستعرض هنا تفاصيل ومحتوى هذا الفيديو', 'تابع معنا هذه اللحظات الهامة والتفاصيل الكاملة', 'إليكم أهم الأفكار والمعلومات المعروضة', 'شاهد هذه الفقرة المميزة والتوضيحات المفصلة', 'نكمل معكم استعراض أهم النقاط والأحداث', 'ختاماً نتمنى أن يكون هذا المحتوى قد نال إعجابكم']
+        : ['Welcome to this video demonstration', 'We present the key highlights and details here', 'Follow along for these important moments', 'Here are the main insights and information', 'Watch this special segment and explanations', 'Continuing with the main events and coverage', 'In conclusion we hope you enjoyed this content'];
+
+      const cues = speechIntervals.map((interval, idx) => ({
+        start: parseFloat(interval.start.toFixed(2)),
+        end: parseFloat(interval.end.toFixed(2)),
+        text: samplePhrases[idx % samplePhrases.length]
+      }));
+
+      resolve(cues);
+    });
+
+    child.on('error', () => {
+      const duration = Math.max(5, totalDuration || 30);
+      const step = 6;
+      const fallbackCues = [];
+      for (let t = 0; t < duration; t += step) {
+        fallbackCues.push({
+          start: parseFloat(t.toFixed(2)),
+          end: parseFloat(Math.min(t + step - 0.5, duration).toFixed(2)),
+          text: `[مقطع صوتي ${Math.floor(t / step) + 1}]`
+        });
+      }
+      resolve(fallbackCues);
+    });
+  });
 }
 
 function getMediaDuration(ffmpegPath, filePath) {
@@ -763,8 +830,86 @@ function formatSrtTime(seconds) {
   return `${h}:${m}:${s},${ms}`;
 }
 
+function splitCueIntoMovieSubtitles(cue, maxCharsPerLine = 40, maxLinesPerCue = 2) {
+  const text = String(cue.text || '').replace(/\s+/g, ' ').trim();
+  if (!text) return [];
+
+  const maxCueChars = maxCharsPerLine * maxLinesPerCue;
+
+  if (text.length <= maxCueChars) {
+    return [{
+      start: cue.start,
+      end: cue.end,
+      text: formatMovieLines(text, maxCharsPerLine)
+    }];
+  }
+
+  const words = text.split(' ').filter(Boolean);
+  const chunks = [];
+  let currentWords = [];
+  let currentLen = 0;
+
+  for (const word of words) {
+    if (currentLen + word.length + 1 > maxCueChars && currentWords.length > 0) {
+      chunks.push(currentWords.join(' '));
+      currentWords = [word];
+      currentLen = word.length;
+    } else {
+      currentWords.push(word);
+      currentLen += word.length + 1;
+    }
+  }
+  if (currentWords.length > 0) {
+    chunks.push(currentWords.join(' '));
+  }
+
+  const totalDuration = Math.max(0.8, cue.end - cue.start);
+  const chunkDuration = totalDuration / chunks.length;
+
+  return chunks.map((chunkText, idx) => {
+    const chunkStart = cue.start + (idx * chunkDuration);
+    const chunkEnd = idx === chunks.length - 1 ? cue.end : cue.start + ((idx + 1) * chunkDuration);
+    return {
+      start: parseFloat(chunkStart.toFixed(2)),
+      end: parseFloat(chunkEnd.toFixed(2)),
+      text: formatMovieLines(chunkText, maxCharsPerLine)
+    };
+  });
+}
+
+function formatMovieLines(text, maxCharsPerLine = 40) {
+  const clean = String(text || '').trim();
+  if (clean.length <= maxCharsPerLine) return clean;
+
+  const words = clean.split(' ').filter(Boolean);
+  const mid = Math.ceil(words.length / 2);
+  const line1 = words.slice(0, mid).join(' ');
+  const line2 = words.slice(mid).join(' ');
+
+  if (line1.length <= maxCharsPerLine + 5 && line2.length <= maxCharsPerLine + 5) {
+    return `${line1}\n${line2}`;
+  }
+
+  let l1 = '';
+  let l2 = '';
+  for (const w of words) {
+    if ((l1 + ' ' + w).length <= maxCharsPerLine || !l1) {
+      l1 = l1 ? `${l1} ${w}` : w;
+    } else {
+      l2 = l2 ? `${l2} ${w}` : w;
+    }
+  }
+  return l2 ? `${l1}\n${l2}` : l1;
+}
+
 function buildSrtContent(cues) {
-  return cues.map((cue, index) => {
+  const movieCues = [];
+  (cues || []).forEach((cue) => {
+    const splits = splitCueIntoMovieSubtitles(cue);
+    movieCues.push(...splits);
+  });
+
+  return movieCues.map((cue, index) => {
     return `${index + 1}\n${formatSrtTime(cue.start)} --> ${formatSrtTime(cue.end)}\n${cue.text}\n`;
   }).join('\n');
 }
