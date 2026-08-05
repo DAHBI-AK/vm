@@ -106,6 +106,8 @@ const infoCache = new Map();
 const streamUrlCache = new Map();
 const INFO_CACHE_TTL = 10 * 60 * 1000;
 const STREAM_CACHE_TTL = 5 * 60 * 1000;
+const MAX_CACHE_ENTRIES = 300;
+let activeDownloadChild = null;
 
 const MIN_YTDLP_SIZE = 1024 * 1024;
 
@@ -134,28 +136,34 @@ const UI_STRINGS = {
     noFolderSelected: 'لم يتم اختيار مجلد',
     ffmpegMissing: 'ffmpeg غير متوفر. أعد تثبيت الاعتماديات',
     notifyDownloadTitle: 'اكتمل التحميل',
-    notifyDownloadBody: 'تم حفظ الملف بنجاح'
+    notifyDownloadBody: 'تم حفظ الملف بنجاح',
+    netflixDrmBlocked: 'Netflix محمي بـ DRM: لا يمكن تحميل الفيلم أو المسلسل عبر VM. الاشتراك لا يتخطى الحماية — استخدم التحميل الرسمي داخل تطبيق Netflix فقط. ما يظهر أحياناً هو تريلر ترويجي وليس الفيلم.'
   },
   en: {
     chooseFolder: 'Choose save folder',
     noFolderSelected: 'No folder selected',
     ffmpegMissing: 'ffmpeg is missing. Reinstall dependencies',
     notifyDownloadTitle: 'Download complete',
-    notifyDownloadBody: 'File saved successfully'
+    notifyDownloadBody: 'File saved successfully',
+    netflixDrmBlocked: 'Netflix is DRM-protected: VM cannot download full movies/series. A subscription does not bypass DRM — use official offline download in the Netflix app. Trailers may appear, but they are not the full title.'
   },
   fr: {
     chooseFolder: 'Choisir le dossier de destination',
     noFolderSelected: 'Aucun dossier sélectionné',
     ffmpegMissing: 'ffmpeg est indisponible. Réinstallez les dépendances',
     notifyDownloadTitle: 'Téléchargement terminé',
-    notifyDownloadBody: 'Fichier enregistré avec succès'
+    notifyDownloadBody: 'Fichier enregistré avec succès',
+    netflixDrmBlocked: 'Netflix est protégé par DRM : VM ne peut pas télécharger films/séries complets. L\'abonnement ne contourne pas la protection — utilisez le téléchargement officiel dans l\'app Netflix. Les bandes-annonces ne sont pas le contenu complet.'
   }
 };
 
 const VIDEO_HOST_PATTERNS = [
   'youtube.com', 'youtu.be', 'instagram.com', 'instagr.am', 'tiktok.com',
   'facebook.com', 'fb.watch', 'twitter.com', 'x.com', 'soundcloud.com',
-  'spotify.com', 'vimeo.com', 'dailymotion.com', 'dai.ly', 'reddit.com', 'redd.it'
+  'spotify.com', 'vimeo.com', 'dailymotion.com', 'dai.ly', 'reddit.com', 'redd.it',
+  'twitch.tv', 'kick.com', 'trovo.live', 'rumble.com', 'pinterest.com', 'pin.it',
+  'linkedin.com', 'threads.net', 'vk.com', 't.me', 'telegram.org', 'bilibili.com',
+  'b23.tv', 'streamable.com', 'odysee.com'
 ];
 
 function uiText(key) {
@@ -168,25 +176,44 @@ function ensureFfmpegReady() {
   }
 }
 
+function isNetflixUrl(url = '') {
+  try {
+    const host = new URL(String(url)).hostname.toLowerCase();
+    return host === 'netflix.com' || host.endsWith('.netflix.com');
+  } catch {
+    return /netflix\.com/i.test(String(url || ''));
+  }
+}
+
+function assertNetflixNotBlocked(url) {
+  if (isNetflixUrl(url)) {
+    throw new Error(uiText('netflixDrmBlocked'));
+  }
+}
+
 const supportedPlatforms = [
-  { name: 'YouTube', patterns: ['youtube.com', 'youtu.be'] },
-  { name: 'Instagram', patterns: ['instagram.com', 'instagr.am'] },
-  { name: 'TikTok', patterns: ['tiktok.com'] },
-  { name: 'Facebook', patterns: ['facebook.com', 'fb.watch'] },
-  { name: 'Twitter / X', patterns: ['twitter.com', 'x.com'] },
-  { name: 'SoundCloud', patterns: ['soundcloud.com'] },
-  { name: 'Pinterest', patterns: ['pinterest.com', 'pin.it'] },
-  { name: 'Spotify', patterns: ['spotify.com', 'open.spotify.com'] },
-  { name: 'Twitch', patterns: ['twitch.tv'] },
-  { name: 'LinkedIn', patterns: ['linkedin.com'] },
-  { name: 'Threads', patterns: ['threads.net'] },
-  { name: 'Rumble', patterns: ['rumble.com'] },
-  { name: 'VK', patterns: ['vk.com'] },
-  { name: 'Telegram', patterns: ['t.me', 'telegram.org'] },
-  { name: 'Bilibili', patterns: ['bilibili.com', 'b23.tv'] },
-  { name: 'Vimeo', patterns: ['vimeo.com'] },
-  { name: 'Dailymotion', patterns: ['dailymotion.com', 'dai.ly'] },
-  { name: 'Reddit', patterns: ['reddit.com', 'redd.it'] },
+  { name: 'YouTube', patterns: ['youtube.com', 'youtu.be'], url: 'https://www.youtube.com' },
+  { name: 'Instagram', patterns: ['instagram.com', 'instagr.am'], url: 'https://www.instagram.com' },
+  { name: 'TikTok', patterns: ['tiktok.com'], url: 'https://www.tiktok.com' },
+  { name: 'Facebook', patterns: ['facebook.com', 'fb.watch'], url: 'https://www.facebook.com' },
+  { name: 'Twitter / X', patterns: ['twitter.com', 'x.com'], url: 'https://x.com' },
+  { name: 'SoundCloud', patterns: ['soundcloud.com'], url: 'https://soundcloud.com' },
+  { name: 'Pinterest', patterns: ['pinterest.com', 'pin.it'], url: 'https://www.pinterest.com' },
+  { name: 'Spotify', patterns: ['spotify.com', 'open.spotify.com'], url: 'https://open.spotify.com' },
+  { name: 'Twitch', patterns: ['twitch.tv'], url: 'https://www.twitch.tv' },
+  { name: 'Kick', patterns: ['kick.com'], url: 'https://kick.com' },
+  { name: 'Trovo', patterns: ['trovo.live'], url: 'https://trovo.live' },
+  { name: 'LinkedIn', patterns: ['linkedin.com'], url: 'https://www.linkedin.com' },
+  { name: 'Threads', patterns: ['threads.net'], url: 'https://www.threads.net' },
+  { name: 'Rumble', patterns: ['rumble.com'], url: 'https://rumble.com' },
+  { name: 'VK', patterns: ['vk.com'], url: 'https://vk.com' },
+  { name: 'Telegram', patterns: ['t.me', 'telegram.org'], url: 'https://telegram.org' },
+  { name: 'Bilibili', patterns: ['bilibili.com', 'b23.tv'], url: 'https://www.bilibili.com' },
+  { name: 'Vimeo', patterns: ['vimeo.com'], url: 'https://vimeo.com' },
+  { name: 'Dailymotion', patterns: ['dailymotion.com', 'dai.ly'], url: 'https://www.dailymotion.com' },
+  { name: 'Reddit', patterns: ['reddit.com', 'redd.it'], url: 'https://www.reddit.com' },
+  { name: 'Streamable', patterns: ['streamable.com'], url: 'https://streamable.com' },
+  { name: 'Odysee', patterns: ['odysee.com'], url: 'https://odysee.com' },
 ];
 
 function sendStatus(type, message) {
@@ -233,19 +260,27 @@ function getYtDlpBaseArgs(url = '') {
     '--geo-bypass'
   ];
 
-  if (url && (url.includes('netflix.com') || url.includes('netflix.'))) {
+  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+    args.push('--extractor-args', 'youtube:player_client=android,web');
+  }
+
+  // Kick / live platforms — cookies + headers لتحسين تجاوز حماية API
+  if (url && (url.includes('kick.com') || url.includes('trovo.live') || url.includes('twitch.tv'))) {
     const browser = getAvailableBrowserForCookies();
     if (browser) {
       args.push('--cookies-from-browser', browser);
     }
-    const cookiesTxt = path.join(process.cwd(), 'cookies.txt');
-    if (fs.existsSync(cookiesTxt)) {
-      args.push('--cookies', cookiesTxt);
-    }
   }
 
-  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
-    args.push('--extractor-args', 'youtube:player_client=android,web');
+  if (url && url.includes('kick.com')) {
+    args.push('--add-header', 'Referer:https://kick.com/');
+    args.push('--add-header', 'Origin:https://kick.com');
+    args.push('--impersonate', 'chrome');
+    args.push('--hls-use-mpegts');
+  }
+
+  if (url && (url.includes('twitch.tv') || url.includes('trovo.live'))) {
+    args.push('--hls-use-mpegts');
   }
 
   if (ffmpegStatic) {
@@ -290,6 +325,35 @@ function getCacheEntry(cache, key) {
 
 function setCacheEntry(cache, key, value, ttl) {
   cache.set(key, { value, time: Date.now(), ttl });
+  if (cache.size > MAX_CACHE_ENTRIES) {
+    const oldest = cache.keys().next().value;
+    if (oldest !== undefined) cache.delete(oldest);
+  }
+}
+
+function killActiveDownload(reason = 'cancelled') {
+  const child = activeDownloadChild;
+  if (!child || child.killed) {
+    activeDownloadChild = null;
+    return false;
+  }
+  try {
+    child.kill();
+  } catch (err) {
+    console.error('Failed to kill download process:', err);
+  }
+  activeDownloadChild = null;
+  return true;
+}
+
+function trackDownloadChild(child) {
+  activeDownloadChild = child;
+  const clear = () => {
+    if (activeDownloadChild === child) activeDownloadChild = null;
+  };
+  child.once('close', clear);
+  child.once('error', clear);
+  return child;
 }
 
 function getBestThumbnail(info) {
@@ -751,17 +815,16 @@ async function getVideoInfo(url) {
   await waitForYtDlp();
 
   const normalizedUrl = normalizeUrl(url);
+  assertNetflixNotBlocked(normalizedUrl);
+
   const cached = getCacheEntry(infoCache, normalizedUrl);
   if (cached) {
     sendStatus('info', 'تم تحميل البيانات من الذاكرة المؤقتة');
     return cached;
   }
 
-  const isNetflix = normalizedUrl.includes('netflix.com');
   const baseFlags = getYtDlpBaseArgs(normalizedUrl);
-  if (!isNetflix) {
-    baseFlags.push('--no-playlist');
-  }
+  baseFlags.push('--no-playlist');
 
   const output = await runYtDlp([
     ...baseFlags,
@@ -868,6 +931,62 @@ function parseSubtitleLanguages(subtitles = {}, automaticCaptions = {}) {
   return [...langs.values()];
 }
 
+function formatHeightLabel(height) {
+  const h = Number(height) || 0;
+  if (h >= 4320) return `${h}p · 8K`;
+  if (h >= 2160) return `${h}p · 4K UHD`;
+  if (h >= 1440) return `${h}p · 2K QHD`;
+  if (h >= 1080) return `${h}p · Full HD`;
+  if (h >= 720) return `${h}p · HD`;
+  if (h > 0) return `${h}p`;
+  return 'Unknown';
+}
+
+function formatAudioLabel(abr) {
+  const rate = Number(abr) || 0;
+  if (rate >= 320) return `${rate}kbps · أقصى`;
+  if (rate >= 256) return `${rate}kbps · فائق`;
+  if (rate >= 192) return `${rate}kbps · عالي`;
+  if (rate >= 128) return `${rate}kbps · متوسط`;
+  if (rate > 0) return `${rate}kbps · منخفض`;
+  return 'صوت';
+}
+
+function getAudioFormatSelector(options) {
+  const abrRaw = options.abr;
+  const formatId = options.format;
+
+  if (!abrRaw || abrRaw === 'best' || formatId === 'best') {
+    return 'bestaudio/bestaudio*/best';
+  }
+
+  const abr = Number(abrRaw);
+  if (formatId && formatId !== 'best' && !Number.isFinite(Number(formatId))) {
+    if (Number.isFinite(abr) && abr > 0) {
+      return `${formatId}/bestaudio[abr<=${abr}]/bestaudio/best`;
+    }
+    return `${formatId}/bestaudio/best`;
+  }
+
+  if (Number.isFinite(abr) && abr > 0) {
+    return `bestaudio[abr<=${abr}]/bestaudio/best`;
+  }
+
+  return 'bestaudio/bestaudio*/best';
+}
+
+function getMp3AudioQualityArg(options) {
+  // 0 = أقصى جودة VBR بدون سقف عند اختيار "أفضل جودة"
+  if (!options?.abr || options.abr === 'best' || options.format === 'best') {
+    return '0';
+  }
+  const abr = Number(options.abr);
+  if (Number.isFinite(abr) && abr > 0) {
+    return `${Math.round(abr)}K`;
+  }
+  return '0';
+}
+
 function parseFormats(formats) {
   const heights = new Map();
   const audioByBitrate = new Map();
@@ -881,7 +1000,7 @@ function parseFormats(formats) {
         if (!current || size > (current.size || 0)) {
           heights.set(height, {
             formatId: String(height),
-            quality: `${height}p`,
+            quality: formatHeightLabel(height),
             resolution: format.resolution,
             height,
             ext: format.ext,
@@ -899,7 +1018,7 @@ function parseFormats(formats) {
       if (!current || size > (current.size || 0)) {
         audioByBitrate.set(key, {
           formatId: format.format_id,
-          quality: abr > 0 ? `${abr}kbps` : (format.format_note || 'صوت'),
+          quality: abr > 0 ? formatAudioLabel(abr) : (format.format_note || 'صوت'),
           ext: format.ext,
           size,
           abr: abr > 0 ? abr : 0
@@ -921,16 +1040,21 @@ function parseFormats(formats) {
 }
 
 function getVideoWithAudioSelector(options) {
+  // الافتراضي: أقصى جودة متاحة بدون سقف (يشمل 4K/8K) ثم الدمج إلى mp4
   if (options.height === 'best' || !options.height) {
-    return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
+    return 'bestvideo+bestaudio/bestvideo*+bestaudio/best';
   }
 
   const height = Number(options.height);
   if (Number.isFinite(height) && height > 0) {
-    return `bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${height}]+bestaudio/best`;
+    // فوق 1080p لا نفضّل mp4 أولاً حتى لا يُستبعد 2K/4K/8K على يوتيوب
+    if (height >= 1440) {
+      return `bestvideo[height<=${height}]+bestaudio/best[height<=${height}]`;
+    }
+    return `bestvideo[height<=${height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=${height}]+bestaudio/best[height<=${height}]`;
   }
 
-  return 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best';
+  return 'bestvideo+bestaudio/bestvideo*+bestaudio/best';
 }
 
 function formatSectionTime(seconds) {
@@ -967,25 +1091,28 @@ function applyClipSection(args, options) {
 
 function getVideoOnlySelector(options) {
   if (options.height === 'best' || !options.height) {
-    return 'bestvideo[ext=mp4]/bestvideo/best';
+    return 'bestvideo/bestvideo*/best';
   }
 
   const height = Number(options.height);
   if (Number.isFinite(height) && height > 0) {
-    return `bestvideo[height<=${height}][ext=mp4]/bestvideo[height<=${height}]/best`;
+    if (height >= 1440) {
+      return `bestvideo[height<=${height}]/best[height<=${height}]`;
+    }
+    return `bestvideo[height<=${height}][ext=mp4]/bestvideo[height<=${height}]/best[height<=${height}]`;
   }
 
-  return 'bestvideo[ext=mp4]/bestvideo/best';
+  return 'bestvideo/bestvideo*/best';
 }
 
 function buildDownloadArgs(url, options, outputPath) {
-  const output = path.join(outputPath, options.filename);
+  const rawName = options?.filename != null ? String(options.filename).trim() : '';
+  const safeName = rawName && rawName !== 'undefined' ? rawName : '%(title)s.%(ext)s';
+  const output = path.join(outputPath, safeName);
   const normalizedUrl = normalizeUrl(url);
-  const isNetflix = normalizedUrl.includes('netflix.com');
+  assertNetflixNotBlocked(normalizedUrl);
   const baseArgs = getYtDlpBaseArgs(normalizedUrl);
-  if (!isNetflix) {
-    baseArgs.push('--no-playlist');
-  }
+  baseArgs.push('--no-playlist');
 
   const args = [
     ...baseArgs,
@@ -996,10 +1123,10 @@ function buildDownloadArgs(url, options, outputPath) {
 
   if (options.type === 'audio') {
     args.push(
-      '-f', 'bestaudio/best',
+      '-f', getAudioFormatSelector(options),
       '-x',
       '--audio-format', 'mp3',
-      '--audio-quality', '0'
+      '--audio-quality', getMp3AudioQualityArg(options)
     );
   } else if (options.type === 'video-only') {
     args.push(
@@ -1064,28 +1191,51 @@ function downloadRemoteFile(url, outputPath) {
 
 function getFormatSelectorForPreview(options = {}) {
   const type = options.type || 'video-audio';
+  const heightRaw = options.height;
+  const heightNum = Number(heightRaw);
+  const hasHeight = heightRaw && heightRaw !== 'best' && Number.isFinite(heightNum) && heightNum > 0;
+  const abrNum = Number(options.abr);
+  const hasAbr = options.abr && options.abr !== 'best' && Number.isFinite(abrNum) && abrNum > 0;
+
+  // صوت فقط — رابط واحد مناسب لعنصر <video>/<audio>
   if (type === 'audio' || options.mode === 'audio') {
-    return 'bestaudio[ext=m4a]/bestaudio/best';
+    if (hasAbr) {
+      return `bestaudio[abr<=${abrNum}]/bestaudio/best`;
+    }
+    return 'bestaudio/bestaudio*/best';
   }
 
-  const height = Number(options.height);
-  if (Number.isFinite(height) && height > 0) {
-    return `best[height<=${height}][ext=mp4]/22/18/bestvideo[height<=${height}]+bestaudio/best`;
+  // فيديو فقط — بدون صوت
+  if (type === 'video-only') {
+    if (hasHeight) {
+      if (heightNum >= 1440) {
+        return `bestvideo[height<=${heightNum}]/best[height<=${heightNum}]/bestvideo/best`;
+      }
+      return `bestvideo[height<=${heightNum}][ext=mp4]/bestvideo[height<=${heightNum}]/best[height<=${heightNum}]/bestvideo/best`;
+    }
+    return 'bestvideo/bestvideo*/best';
   }
 
-  return '22/18/best[ext=mp4]/bestvideo+bestaudio/best';
+  // فيديو + صوت: صيغة مدمجة واحدة فقط (HTML5 لا يقبل bestvideo+bestaudio كرابطين)
+  if (hasHeight) {
+    return `best[height<=${heightNum}][vcodec!=none][acodec!=none]/best[height<=${heightNum}]/best`;
+  }
+
+  return 'best[vcodec!=none][acodec!=none]/best';
 }
 
 async function getStreamUrl(url, options = {}) {
   const normalizedUrl = normalizeUrl(url);
   const formatSelector = typeof options === 'boolean'
-    ? (options ? 'bestvideo/best' : 'best[ext=mp4]/bestvideo+bestaudio/best')
+    ? (options ? 'bestvideo/best' : 'best[vcodec!=none][acodec!=none]/best')
     : getFormatSelectorForPreview(options);
 
   const cacheKey = `${normalizedUrl}:${formatSelector}`;
-  const cached = getCacheEntry(streamUrlCache, cacheKey);
-  if (cached) {
-    return cached;
+  if (!options?.forceRefresh) {
+    const cached = getCacheEntry(streamUrlCache, cacheKey);
+    if (cached) {
+      return cached;
+    }
   }
 
   const output = await runYtDlp([
@@ -1101,8 +1251,10 @@ async function getStreamUrl(url, options = {}) {
     throw new Error('تعذر الحصول على رابط البث للفيديو');
   }
 
-  setCacheEntry(streamUrlCache, cacheKey, lines[0], STREAM_CACHE_TTL);
-  return lines[0];
+  // إن وُجدت عدة روابط (فيديو+صوت منفصلان) نأخذ الأول فقط — لذلك نفضّل صيغاً مدمجة في المحدد
+  const streamUrl = lines[0];
+  setCacheEntry(streamUrlCache, cacheKey, streamUrl, STREAM_CACHE_TTL);
+  return streamUrl;
 }
 
 function extractFrameAtTime(streamUrl, timeSec, outputPath, imageFormat) {
@@ -1299,10 +1451,10 @@ function sendDownloadProgress(progress, extra = {}) {
 
 function spawnYtDlpDownload(args, { progressStart = 0, progressEnd = 100 } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(ytDlpPath, args, {
+    const child = trackDownloadChild(spawn(ytDlpPath, args, {
       windowsHide: true,
       env: { ...process.env, PYTHONUTF8: '1' }
-    });
+    }));
 
     let stderr = '';
     const span = Math.max(1, progressEnd - progressStart);
@@ -1331,10 +1483,14 @@ function spawnYtDlpDownload(args, { progressStart = 0, progressEnd = 100 } = {})
     });
 
     child.on('error', reject);
-    child.on('close', (code) => {
+    child.on('close', (code, signal) => {
       if (code === 0) {
         sendDownloadProgress(progressEnd);
         resolve();
+        return;
+      }
+      if (signal) {
+        reject(new Error('تم إلغاء التحميل'));
         return;
       }
       reject(new Error(stderr.trim() || `yt-dlp exited with code ${code}`));
@@ -1727,10 +1883,10 @@ async function downloadVideo(url, options, outputPath) {
   const { args, output } = buildDownloadArgs(url, options, outputPath);
 
   return new Promise((resolve, reject) => {
-    const child = spawn(ytDlpPath, args, {
+    const child = trackDownloadChild(spawn(ytDlpPath, args, {
       windowsHide: true,
       env: { ...process.env, PYTHONUTF8: '1' }
-    });
+    }));
 
     let stderr = '';
 
@@ -1750,9 +1906,14 @@ async function downloadVideo(url, options, outputPath) {
 
     child.on('error', reject);
 
-    child.on('close', (code) => {
+    child.on('close', (code, signal) => {
       if (code === 0) {
         resolve({ success: true, path: output });
+        return;
+      }
+
+      if (signal) {
+        reject(new Error('تم إلغاء التحميل'));
         return;
       }
 
@@ -1765,6 +1926,11 @@ async function downloadVideo(url, options, outputPath) {
     });
   });
 }
+
+ipcMain.handle('cancel-download', () => {
+  const killed = killActiveDownload('user-cancel');
+  return { success: true, cancelled: killed };
+});
 
 ipcMain.handle('get-app-status', () => getAppHealth());
 
@@ -1850,6 +2016,98 @@ ipcMain.handle('dismiss-clipboard-url', (event, url) => {
   return { success: true };
 });
 
+function normalizeChannelCheckUrl(rawUrl) {
+  const normalized = normalizeUrl(rawUrl);
+  try {
+    const u = new URL(normalized);
+    const host = u.hostname.replace(/^www\./, '');
+    if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+      const path = u.pathname.replace(/\/+$/, '') || '/';
+      const isChannelPath =
+        path.startsWith('/@') ||
+        path.startsWith('/channel/') ||
+        path.startsWith('/c/') ||
+        path.startsWith('/user/');
+      const alreadyTab = /\/(videos|streams|shorts|releases|playlists)$/i.test(path);
+      if (isChannelPath && !alreadyTab) {
+        u.pathname = `${path}/videos`;
+        u.search = '';
+        u.hash = '';
+        return u.toString();
+      }
+    }
+  } catch {
+    /* keep original */
+  }
+  return normalized;
+}
+
+async function fetchChannelLatestEntries(channelUrl, limit = 8) {
+  await waitForYtDlp();
+  const url = normalizeChannelCheckUrl(channelUrl);
+  const baseFlags = getYtDlpBaseArgs(url);
+  const max = Math.max(1, Math.min(20, Number(limit) || 8));
+
+  const output = await runYtDlp([
+    ...baseFlags,
+    '--flat-playlist',
+    '--skip-download',
+    '--playlist-end', String(max),
+    '--print', '%(id)s\t%(title)s\t%(webpage_url)s\t%(uploader,channel,playlist_title,playlist)s',
+    url
+  ]);
+
+  const entries = [];
+  let channelName = '';
+  for (const line of String(output || '').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || !trimmed.includes('\t')) continue;
+    const [id, title, webpageUrl, uploader] = trimmed.split('\t');
+    if (!id || id === 'NA') continue;
+    if (uploader && uploader !== 'NA' && !channelName) {
+      channelName = uploader;
+    }
+    let videoUrl = webpageUrl && webpageUrl !== 'NA' ? webpageUrl : '';
+    if (!videoUrl) {
+      if (/^[A-Za-z0-9_-]{6,}$/.test(id)) {
+        videoUrl = `https://www.youtube.com/watch?v=${id}`;
+      } else {
+        videoUrl = url;
+      }
+    }
+    entries.push({
+      id: String(id),
+      title: title && title !== 'NA' ? title : String(id),
+      url: videoUrl
+    });
+  }
+
+  return { channelName, entries, checkedUrl: url };
+}
+
+ipcMain.handle('check-channel-updates', async (event, data = {}) => {
+  try {
+    const url = String(data.url || '').trim();
+    if (!url) {
+      return { success: false, error: 'رابط القناة مطلوب' };
+    }
+    const result = await fetchChannelLatestEntries(url, data.limit || 8);
+    return {
+      success: true,
+      data: {
+        name: result.channelName || '',
+        entries: result.entries,
+        checkedUrl: result.checkedUrl
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message || 'فشل فحص القناة'
+    };
+  }
+});
+
 ipcMain.handle('show-notification', (event, { title, body }) => {
   showDesktopNotification({ title, body });
   return { success: true };
@@ -1873,6 +2131,7 @@ ipcMain.handle('get-downloads-path', () => app.getPath('downloads'));
 
 ipcMain.handle('download', async (event, { url, options }) => {
   try {
+    assertNetflixNotBlocked(url);
     ensureFfmpegReady();
     const outputDir = await resolveOutputDirectory(options?.downloadDir);
 
@@ -1964,6 +2223,19 @@ ipcMain.handle('download', async (event, { url, options }) => {
 });
 
 ipcMain.handle('get-supported-platforms', () => supportedPlatforms);
+
+ipcMain.handle('open-external-url', async (event, rawUrl) => {
+  try {
+    const parsed = new URL(String(rawUrl || '').trim());
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { success: false, error: 'رابط غير صالح' };
+    }
+    await shell.openExternal(parsed.toString());
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message || 'تعذر فتح الموقع' };
+  }
+});
 
 ipcMain.handle('open-downloads', async (event, customPath) => {
   const targetFolder = (customPath && fs.existsSync(customPath))
@@ -2117,6 +2389,7 @@ if (gotSingleInstanceLock) {
   });
 
   app.on('window-all-closed', () => {
+    killActiveDownload('app-close');
     if (clipboardWatchInterval) {
       clearInterval(clipboardWatchInterval);
       clipboardWatchInterval = null;
@@ -2125,6 +2398,10 @@ if (gotSingleInstanceLock) {
     if (process.platform !== 'darwin') {
       app.quit();
     }
+  });
+
+  app.on('before-quit', () => {
+    killActiveDownload('before-quit');
   });
 
   app.on('activate', () => {

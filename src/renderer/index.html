@@ -40,13 +40,18 @@
           <i class="fas fa-download"></i>
           <span data-i18n="navDownload">التحميل</span>
         </a>
-        <a href="#" class="nav-item" data-section="history">
-          <i class="fas fa-history"></i>
-          <span data-i18n="navHistory">السجل</span>
-        </a>
         <a href="#" class="nav-item" data-section="platforms">
           <i class="fas fa-globe"></i>
           <span data-i18n="navPlatforms">المنصات المدعومة</span>
+        </a>
+        <a href="#" class="nav-item" data-section="favorites">
+          <i class="fas fa-star"></i>
+          <span data-i18n="navFavorites">المفضلة</span>
+          <span class="nav-fav-badge" id="navFavoritesBadge" hidden>0</span>
+        </a>
+        <a href="#" class="nav-item" data-section="history">
+          <i class="fas fa-history"></i>
+          <span data-i18n="navHistory">السجل</span>
         </a>
         <a href="#" class="nav-item" data-section="settings">
           <i class="fas fa-cog"></i>
@@ -172,7 +177,7 @@
               </button>
 
               <!-- سلسلة روابط — آخر رمز مصغّر -->
-              <button type="button" class="btn-url-tool btn-batch-icon-tool" id="batchToggleBtn" title="سلسلة روابط (بدون قيود)">
+              <button type="button" class="btn-url-tool btn-batch-icon-tool" id="batchToggleBtn" title="سلسلة روابط بدون قيود — أكثر من 1000 فيديو">
                 <i class="fas fa-list-ol"></i>
               </button>
             </div>
@@ -196,31 +201,46 @@
                 <i class="fas fa-paste"></i>
                 <span data-i18n="pasteAddBatch">لصق وإضافة للقائمة</span>
               </button>
+              <button type="button" class="btn-add-batch" id="addBatchBtn">
+                <i class="fas fa-plus"></i>
+                <span data-i18n="addBatch">إضافة للقائمة</span>
+              </button>
               <button type="button" class="btn-start-batch" id="startBatchBtn" disabled>
                 <i class="fas fa-play"></i>
                 <span data-i18n="startBatch">بدء تحميل السلسلة تلقائياً</span>
+              </button>
+              <button type="button" class="btn-stop-batch hidden" id="stopBatchBtn">
+                <i class="fas fa-stop"></i>
+                <span data-i18n="stopBatch">إيقاف السلسلة</span>
+              </button>
+              <button type="button" class="btn-clear-completed-batch" id="clearCompletedBatchBtn" title="حذف المكتمل والفاشل من القائمة دون التأثير على العداد">
+                <i class="fas fa-check-double"></i>
+                <span data-i18n="clearCompletedBatch">مسح المكتمل</span>
               </button>
               <button type="button" class="btn-clear-batch" id="clearBatchBtn">
                 <i class="fas fa-trash"></i>
                 <span data-i18n="clearBatch">إفراغ القائمة</span>
               </button>
             </div>
+            <p class="batch-unlimited-note" data-i18n="batchUnlimitedNote">بدون حد أقصى — يمكن تحميل أكثر من 1000 فيديو في نفس الجلسة تلقائياً.</p>
             <div class="batch-queue-list" id="batchQueueList"></div>
           </div>
 
 
           <div class="platform-tags">
-            <span class="tag"><i class="fab fa-youtube"></i> YouTube</span>
-            <span class="tag"><i class="fab fa-instagram"></i> Instagram</span>
-            <span class="tag"><i class="fab fa-tiktok"></i> TikTok</span>
-            <span class="tag"><i class="fab fa-pinterest" style="color: #e60023;"></i> Pinterest</span>
-            <span class="tag"><i class="fab fa-twitch"></i> Twitch</span>
-            <span class="tag"><i class="fab fa-facebook"></i> Facebook</span>
-            <span class="tag"><i class="fab fa-twitter"></i> Twitter</span>
-            <span class="tag"><i class="fab fa-telegram"></i> Telegram</span>
-            <span class="tag"><i class="fab fa-linkedin"></i> LinkedIn</span>
-            <span class="tag"><i class="fab fa-vk"></i> VK</span>
-            <span class="tag" data-i18n="morePlatforms">+100 منصة عالمية أخرى</span>
+            <button type="button" class="tag" data-platform-name="YouTube" data-platform-url="https://www.youtube.com"><i class="fab fa-youtube"></i> YouTube</button>
+            <button type="button" class="tag" data-platform-name="Instagram" data-platform-url="https://www.instagram.com"><i class="fab fa-instagram"></i> Instagram</button>
+            <button type="button" class="tag" data-platform-name="TikTok" data-platform-url="https://www.tiktok.com"><i class="fab fa-tiktok"></i> TikTok</button>
+            <button type="button" class="tag" data-platform-name="Pinterest" data-platform-url="https://www.pinterest.com"><i class="fab fa-pinterest" style="color: #e60023;"></i> Pinterest</button>
+            <button type="button" class="tag" data-platform-name="Twitch" data-platform-url="https://www.twitch.tv"><i class="fab fa-twitch"></i> Twitch</button>
+            <button type="button" class="tag" data-platform-name="Kick" data-platform-url="https://kick.com"><i class="fas fa-bolt"></i> Kick</button>
+            <button type="button" class="tag" data-platform-name="Trovo" data-platform-url="https://trovo.live"><i class="fas fa-gamepad"></i> Trovo</button>
+            <button type="button" class="tag" data-platform-name="Facebook" data-platform-url="https://www.facebook.com"><i class="fab fa-facebook"></i> Facebook</button>
+            <button type="button" class="tag" data-platform-name="Twitter / X" data-platform-url="https://x.com"><i class="fab fa-twitter"></i> Twitter</button>
+            <button type="button" class="tag" data-platform-name="Telegram" data-platform-url="https://telegram.org"><i class="fab fa-telegram"></i> Telegram</button>
+            <button type="button" class="tag" data-platform-name="LinkedIn" data-platform-url="https://www.linkedin.com"><i class="fab fa-linkedin"></i> LinkedIn</button>
+            <button type="button" class="tag" data-platform-name="VK" data-platform-url="https://vk.com"><i class="fab fa-vk"></i> VK</button>
+            <span class="tag tag-static" data-i18n="morePlatforms">+100 منصة عالمية أخرى</span>
           </div>
         </div>
 
@@ -251,15 +271,17 @@
 
           <div class="video-preview-player hidden" id="previewPlayerBox">
             <div class="preview-player-header">
-              <div class="preview-header-title">
-                <i class="fas fa-desktop"></i>
-                <span data-i18n="previewHeader">معاينة التعديلات مباشرة قبل التحميل</span>
-                <span class="preview-active-badge" id="previewActiveBadge">إعدادات افتراضية</span>
+              <div class="preview-header-main">
+                <div class="preview-header-title">
+                  <i class="fas fa-desktop"></i>
+                  <span data-i18n="previewHeader">معاينة التعديلات مباشرة قبل التحميل</span>
+                </div>
+                <span class="preview-active-badge" id="previewActiveBadge" data-i18n="previewActiveBadge">إعدادات افتراضية</span>
               </div>
               <div class="preview-header-actions">
-                <button type="button" id="refreshPreviewBtn" class="btn-refresh-preview" title="إعادة تشغيل المعاينة بتعديل الإعدادات الحالية">
+                <button type="button" id="refreshPreviewBtn" class="btn-refresh-preview" data-i18n-title="refreshPreview" title="تحديث المعاينة">
                   <i class="fas fa-sync-alt"></i>
-                  <span>تحديث المعاينة</span>
+                  <span data-i18n="refreshPreview">تحديث المعاينة</span>
                 </button>
                 <button type="button" id="closePreviewBtn" class="close-preview-btn" title="إغلاق المعاينة"><i class="fas fa-times"></i></button>
               </div>
@@ -553,7 +575,7 @@
         <div class="download-options" id="downloadOptions">
           <div class="options-group options-group-unified" id="unifiedQualityPanel">
             <h4><i class="fas fa-sliders-h"></i> <span data-i18n="qualityTitle">خيارات الجودة</span></h4>
-            <p class="options-hint" id="qualityHint" data-i18n-dynamic="true">اختر نوع التحميل ثم الجودة المناسبة — من الأقل للأعلى</p>
+            <p class="options-hint" id="qualityHint" data-i18n-dynamic="true">اختر نوع التحميل ثم الجودة — من الأقل حتى 8K، والافتراضي أقصى جودة بدون سقف</p>
 
             <div class="download-type-tabs" id="downloadTypeTabs">
               <button type="button" class="download-type-tab active" data-type="video-audio">
@@ -640,6 +662,40 @@
         </div>
       </section>
 
+      <section class="section" id="platformsSection">
+        <h3 data-i18n="platformsTitle">المنصات المدعومة</h3>
+        <div class="platforms-grid" id="platformsGrid"></div>
+      </section>
+
+      <section class="section" id="favoritesSection">
+        <div class="favorites-header">
+          <div>
+            <h3><i class="fas fa-star"></i> <span data-i18n="favoritesTitle">القنوات المفضلة</span></h3>
+            <p class="favorites-desc" data-i18n="favoritesDesc">احفظ روابط القنوات التي تتابعها، رتّبها حسب تفضيلك، واستقبل إشعاراً عند صدور مقطع جديد.</p>
+          </div>
+          <button type="button" class="btn-fav-check-all" id="checkAllFavoritesBtn" title="فحص التحديثات الآن">
+            <i class="fas fa-bell"></i>
+            <span data-i18n="favoritesCheckAll">فحص التحديثات</span>
+          </button>
+        </div>
+
+        <div class="favorites-add-box">
+          <textarea id="favoriteChannelInput" rows="3" spellcheck="false" data-i18n-placeholder="favoritesPlaceholder" placeholder="الصق رابط قناة أو أكثر (رابط في كل سطر)&#10;مثال: https://www.youtube.com/@channel"></textarea>
+          <div class="favorites-add-actions">
+            <button type="button" class="btn-fav-paste" id="pasteFavoriteBtn">
+              <i class="fas fa-paste"></i>
+              <span data-i18n="favoritesPaste">لصق</span>
+            </button>
+            <button type="button" class="btn-fav-add" id="addFavoriteBtn">
+              <i class="fas fa-plus"></i>
+              <span data-i18n="favoritesAdd">إضافة للمفضلة</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="favorites-list" id="favoritesList"></div>
+      </section>
+
       <section class="section" id="historySection">
         <div class="empty-state" id="historyEmptyState">
           <i class="fas fa-history"></i>
@@ -647,11 +703,6 @@
           <p data-i18n="historyEmptyDesc">سيتم حفظ التحميلات السابقة هنا</p>
         </div>
         <div class="history-list" id="historyList"></div>
-      </section>
-
-      <section class="section" id="platformsSection">
-        <h3 data-i18n="platformsTitle">المنصات المدعومة</h3>
-        <div class="platforms-grid" id="platformsGrid"></div>
       </section>
 
       <section class="section" id="settingsSection">
@@ -678,11 +729,16 @@
           <div class="setting-item">
             <label data-i18n="defaultQuality">جودة الفيديو الافتراضية</label>
             <select id="defaultQuality">
-              <option value="best" data-i18n="qualityBest">أفضل جودة متاحة</option>
-              <option value="1080">1080p</option>
-              <option value="720">720p</option>
-              <option value="480">480p</option>
+              <option value="best" data-i18n="qualityBest">أقصى جودة متاحة (بدون سقف — حتى 8K)</option>
+              <option value="144">144p</option>
+              <option value="240">240p</option>
               <option value="360">360p</option>
+              <option value="480">480p</option>
+              <option value="720">720p HD</option>
+              <option value="1080">1080p Full HD</option>
+              <option value="1440">1440p · 2K</option>
+              <option value="2160">2160p · 4K UHD</option>
+              <option value="4320">4320p · 8K</option>
             </select>
           </div>
 

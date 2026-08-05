@@ -1,30 +1,19 @@
-========================================
-VM Downloader - نسخة محمولة
-========================================
+VM Downloader - Portable
 
-[ Windows - أجهزة الكمبيوتر ]
-1. فك ضغط الملف VM-Portable.zip
-2. افتح المجلد VM-Portable
-3. انقر مرتين على VM.exe (الأيقونة الحمراء)
+CMD commands (double-click in Explorer):
+  1) INSTALL_TOOLS.bat              = install required tools
+  2) CREATE_DESKTOP_SHORTCUT.bat    = desktop shortcut
+  3) RUN_MENU.bat                   = command menu
+  4) SHOW_GUIDE.bat                 = open image guide
+  5) VM.exe                         = start app
 
-متطلبات Windows:
-- Windows 10 أو أحدث
-- Node.js من https://nodejs.org (مرة واحدة فقط)
-- اتصال إنترنت عند أول تشغيل
+Arabic aliases (same actions):
+  تثبيت-الأدوات.bat
+  إنشاء-اختصار-سطح-المكتب.bat
+  أوامر-التشغيل.bat
+  عرض-الدليل-بالصور.bat
 
-عند أول تشغيل:
-- شغّل INSTALL.bat إذا ظهرت رسالة نقص ملفات
-- أو انقر VM.exe مباشرة
-
-[ الهواتف - Android / iPhone ]
-هذا تطبيق سطح مكتب (Windows) ولا يعمل على الهواتف.
-للاستخدام من الهاتف: انسخ الملف المضغوط إلى الكمبيوتر وشغّله هناك.
-
-[ Mac / Linux ]
-هذه النسخة مخصصة لـ Windows فقط.
-
-[ نقل التطبيق ]
-- يمكن نسخ مجلد VM-Portable كاملاً إلى فلاشة USB
-- أو إرسال VM-Portable.zip عبر Google Drive / Telegram
-
-========================================
+Guide images (in order):
+  صور\1-ماذا-يفعل-VM.png
+  صور\2-كيف-يعمل-VM.png
+  صور\3-خطوات-التثبيت.png

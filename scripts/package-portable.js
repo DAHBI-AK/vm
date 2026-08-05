@@ -11,14 +11,22 @@ const includeItems = [
   'VM.exe',
   'VM.bat',
   'VM.vbs',
-  'START.txt',
-  'README-PORTABLE.txt',
+  'INSTALL.bat',
+  'INSTALL_TOOLS.bat',
+  'CREATE_DESKTOP_SHORTCUT.bat',
+  'RUN_MENU.bat',
+  'SHOW_GUIDE.bat',
+  'START_HERE.bat',
+  'EXTRACT_ZIP.bat',
+  'guide.html',
+  'README.txt',
   'package.json',
   'package-lock.json',
   'assets',
   'bin',
   'src',
-  'scripts'
+  'scripts',
+  'guide-images'
 ];
 
 const excludeFromNodeModules = new Set([
@@ -51,63 +59,33 @@ function copyRecursive(source, target) {
 }
 
 function writePortableReadme() {
-  const readme = `========================================
-VM Downloader - نسخة محمولة
-========================================
+  const readme = `VM Downloader - Portable (Windows)
 
-[ Windows - أجهزة الكمبيوتر ]
-1. فك ضغط الملف VM-Portable.zip
-2. افتح المجلد VM-Portable
-3. انقر مرتين على VM.exe (الأيقونة الحمراء)
+IMPORTANT:
+- All command files use ENGLISH names only (CMD-safe).
+- Unzip with Windows Explorer, 7-Zip, or EXTRACT_ZIP.bat
 
-متطلبات Windows:
-- Windows 10 أو أحدث
-- Node.js من https://nodejs.org (مرة واحدة فقط)
-- اتصال إنترنت عند أول تشغيل
+Commands (double-click):
+  1) START_HERE.bat
+  2) INSTALL_TOOLS.bat
+  3) CREATE_DESKTOP_SHORTCUT.bat
+  4) VM.exe
 
-عند أول تشغيل:
-- شغّل INSTALL.bat إذا ظهرت رسالة نقص ملفات
-- أو انقر VM.exe مباشرة
+Optional:
+  RUN_MENU.bat
+  SHOW_GUIDE.bat
 
-[ الهواتف - Android / iPhone ]
-هذا تطبيق سطح مكتب (Windows) ولا يعمل على الهواتف.
-للاستخدام من الهاتف: انسخ الملف المضغوط إلى الكمبيوتر وشغّله هناك.
-
-[ Mac / Linux ]
-هذه النسخة مخصصة لـ Windows فقط.
-
-[ نقل التطبيق ]
-- يمكن نسخ مجلد VM-Portable كاملاً إلى فلاشة USB
-- أو إرسال VM-Portable.zip عبر Google Drive / Telegram
-
-========================================
+Guide images (in order):
+  guide-images\\1-what-vm-does.png
+  guide-images\\2-how-vm-works.png
+  guide-images\\3-install-steps.png
 `;
-
+  fs.writeFileSync(path.join(packageDir, 'README.txt'), readme, 'utf8');
   fs.writeFileSync(path.join(packageDir, 'README-PORTABLE.txt'), readme, 'utf8');
 }
 
 function writeInstallBat() {
-  const installBat = `@echo off
-chcp 65001 >nul
-cd /d "%~dp0"
-set "NODE_DIR=%ProgramFiles%\\nodejs"
-set "PATH=%NODE_DIR%;%PATH%"
-
-if not exist "%NODE_DIR%\\node.exe" (
-  echo يرجى تثبيت Node.js من https://nodejs.org
-  pause
-  exit /b 1
-)
-
-echo [VM] Installing required files...
-call npm install --no-fund --no-audit
-call node scripts\\setup.js
-call node scripts\\create-vm-exe.js
-echo [VM] Ready. Double-click VM.exe
-pause
-`;
-
-  fs.writeFileSync(path.join(packageDir, 'INSTALL.bat'), installBat, 'utf8');
+  // Keep INSTALL.bat from includeItems (ASCII source file). Do not overwrite with Arabic.
 }
 
 function buildPackageFolder() {
@@ -126,7 +104,6 @@ function buildPackageFolder() {
   });
 
   writePortableReadme();
-  writeInstallBat();
 
   const nodeModulesSource = path.join(rootDir, 'node_modules');
   const nodeModulesTarget = path.join(packageDir, 'node_modules');

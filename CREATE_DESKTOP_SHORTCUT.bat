@@ -1,17 +1,46 @@
 @echo off
-chcp 65001 >nul
-echo ========================================================
-echo   VM — Video Downloader Shortcut Installer
-echo ========================================================
+setlocal EnableExtensions
 cd /d "%~dp0"
-node scripts\create-shortcuts.js
+title VM - Create Desktop Shortcut
+
+echo ========================================================
+echo   VM - Create Desktop Shortcut
+echo ========================================================
 echo.
-echo ✅ تم إنشاء اختصار التطبيق بنجاح على:
-echo 1. سطح المكتب (Desktop)
-echo 2. قائمة ابدأ / البرامج (Start Menu / Productivity)
+
+set "NODE_DIR=%ProgramFiles%\nodejs"
+set "PATH=%~dp0bin;%~dp0node_modules\.bin;%NODE_DIR%;%PATH%"
+
+where node >nul 2>&1
+if errorlevel 1 (
+  echo Node.js not found.
+  echo Run INSTALL_TOOLS.bat first.
+  pause
+  exit /b 1
+)
+
+if not exist "%~dp0VM.exe" (
+  echo VM.exe not found in this folder.
+  pause
+  exit /b 1
+)
+
+if not exist "%~dp0scripts\create-shortcuts.js" (
+  echo scripts\create-shortcuts.js not found.
+  pause
+  exit /b 1
+)
+
+echo Creating desktop shortcut...
+call node "%~dp0scripts\create-shortcuts.js"
+if errorlevel 1 (
+  echo Shortcut creation failed.
+  pause
+  exit /b 1
+)
+
 echo.
-echo 📌 للتثبيت على شريط المهام (Barre des tâches):
-echo - انقر بزر الماوس الأيمن على اختصار VM الموجود على سطح المكتب
-echo - اختر "Pin to taskbar" أو "تثبيت على شريط المهام"
+echo Shortcut created on Desktop and Start Menu.
 echo.
 pause
+endlocal
