@@ -1,9 +1,13 @@
 services:
   - type: web
     name: vm-mobile
-    runtime: docker
+    runtime: node
     plan: free
-    dockerfilePath: ./Dockerfile
+    region: frankfurt
+    branch: vm-quality-favorites
+    autoDeploy: true
+    buildCommand: npm install --omit=dev --ignore-scripts && node scripts/ensure-ytdlp.js
+    startCommand: npm start
     healthCheckPath: /
     envVars:
       - key: NODE_ENV

@@ -14,7 +14,7 @@
     "brand": "node scripts/brand-setup.js",
     "launcher": "node scripts/create-vm-exe.js",
     "package:portable": "node scripts/package-portable.js",
-    "postinstall": "node scripts/setup.js && node scripts/brand-setup.js"
+    "postinstall": "node scripts/postinstall.js"
   },
   "author": "VM",
   "license": "MIT",
