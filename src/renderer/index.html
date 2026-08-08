@@ -49,6 +49,11 @@
           <span data-i18n="navFavorites">المفضلة</span>
           <span class="nav-fav-badge" id="navFavoritesBadge" hidden>0</span>
         </a>
+        <a href="#" class="nav-item" data-section="watchlater">
+          <i class="fas fa-clock"></i>
+          <span data-i18n="navWatchLater">للمشاهدة لاحقاً</span>
+          <span class="nav-fav-badge" id="navWatchLaterBadge" hidden>0</span>
+        </a>
         <a href="#" class="nav-item" data-section="history">
           <i class="fas fa-history"></i>
           <span data-i18n="navHistory">السجل</span>
@@ -60,23 +65,23 @@
       </nav>
       
       <div class="sidebar-download-container" style="margin: 20px 15px; display: flex; justify-content: center; gap: 12px; align-items: center;">
-        <button type="button" class="btn-sidebar-action" id="settingsPasteBtn" title="لصق وبحث" style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(99,102,241,0.3);">
+        <button type="button" class="btn-sidebar-action" id="settingsPasteBtn" data-i18n-title="pasteSearch" title="لصق وبحث" style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(99,102,241,0.3);">
           <i class="fas fa-paste"></i>
         </button>
-        <button type="button" class="btn-sidebar-action" id="settingsDownloadBtn" title="تحميل" style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(56,189,248,0.3);">
+        <button type="button" class="btn-sidebar-action" id="settingsDownloadBtn" data-i18n-title="download" title="تحميل" style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(56,189,248,0.3);">
           <i class="fas fa-download"></i>
         </button>
-        <button type="button" class="btn-sidebar-action" id="settingsQuickPlayBtn" title="تشغيل الفيديو" style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(16,185,129,0.3); opacity: 0.5; pointer-events: none;">
+        <button type="button" class="btn-sidebar-action" id="settingsQuickPlayBtn" data-i18n-title="playVideo" title="تشغيل الفيديو" style="width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(16,185,129,0.3); opacity: 0.5; pointer-events: none;">
           <i class="fas fa-play"></i>
         </button>
       </div>
 
       <div class="sidebar-footer" style="display: flex; flex-direction: column; gap: 8px;">
-        <button class="btn-open-downloads" id="chooseDownloadFolderBtn" title="اختيار مسار التحميل">
+        <button class="btn-open-downloads" id="chooseDownloadFolderBtn" data-i18n-title="chooseDownloadFolderTitle" title="اختيار مسار التحميل">
           <i class="fas fa-folder-plus"></i>
           <span data-i18n="chooseDownloadPath">اختيار المسار</span>
         </button>
-        <button class="btn-open-downloads" id="openLastDownloadSidebarBtn" title="فتح مجلد مسار آخر فيديو">
+        <button class="btn-open-downloads" id="openLastDownloadSidebarBtn" data-i18n-title="openLastFolderTitle" title="فتح مجلد مسار آخر فيديو">
           <i class="fas fa-folder-open"></i>
           <span data-i18n="openLastFolder">فتح مجلد آخر فيديو</span>
         </button>
@@ -153,31 +158,31 @@
             <div class="url-tools-icons" id="urlToolsIcons">
               <!-- قائمة الروابط المنسوخة -->
               <div class="url-tool-wrap" id="copiedLinksWrap">
-                <button type="button" class="btn-url-tool" id="copiedLinksBtn" title="اختيار من الروابط المنسوخة">
+                <button type="button" class="btn-url-tool" id="copiedLinksBtn" data-i18n-title="copiedLinksPick" title="اختيار من الروابط المنسوخة">
                   <i class="fas fa-history"></i>
                   <span class="url-tool-badge" id="copiedLinksBadge" hidden>0</span>
                 </button>
                 <div class="copied-links-dropdown hidden" id="copiedLinksDropdown">
                   <div class="copied-links-header">
-                    <strong><i class="fas fa-clipboard-list"></i> الروابط المنسوخة</strong>
-                    <button type="button" class="btn-clear-copied" id="clearCopiedLinksBtn" title="مسح القائمة"><i class="fas fa-trash"></i></button>
+                    <strong><i class="fas fa-clipboard-list"></i> <span data-i18n="copiedLinksTitle">الروابط المنسوخة</span></strong>
+                    <button type="button" class="btn-clear-copied" id="clearCopiedLinksBtn" data-i18n-title="copiedLinksClear" title="مسح القائمة"><i class="fas fa-trash"></i></button>
                   </div>
                   <div class="copied-links-list" id="copiedLinksList">
-                    <p class="copied-links-empty">لا توجد روابط منسوخة بعد</p>
+                    <p class="copied-links-empty" data-i18n="copiedLinksEmpty">لا توجد روابط منسوخة بعد</p>
                   </div>
-                  <p class="copied-links-hint">اضغط على رابط لبدء البحث فوراً</p>
+                  <p class="copied-links-hint" data-i18n="copiedLinksHint">اضغط على رابط لبدء البحث فوراً</p>
                 </div>
               </div>
 
               <!-- لصق تلقائي للسلسلة -->
-              <button type="button" class="btn-url-tool btn-auto-paste-icon" id="autoPasteBatchBtn" title="لصق تلقائي — أي رابط تنسخه بعد التفعيل يُضاف للقائمة">
+              <button type="button" class="btn-url-tool btn-auto-paste-icon" id="autoPasteBatchBtn" data-i18n-title="autoPasteTitle" title="لصق تلقائي — أي رابط تنسخه بعد التفعيل يُضاف للقائمة">
                 <i class="fas fa-clipboard" id="autoPasteIcon"></i>
                 <span class="auto-paste-dot" id="autoPasteDot"></span>
                 <span class="url-tool-status" id="autoPasteStatusBadge">OFF</span>
               </button>
 
               <!-- سلسلة روابط — آخر رمز مصغّر -->
-              <button type="button" class="btn-url-tool btn-batch-icon-tool" id="batchToggleBtn" title="سلسلة روابط بدون قيود — أكثر من 1000 فيديو">
+              <button type="button" class="btn-url-tool btn-batch-icon-tool" id="batchToggleBtn" data-i18n-title="batchToggleTitle" title="سلسلة روابط بدون قيود — أكثر من 1000 فيديو">
                 <i class="fas fa-list-ol"></i>
               </button>
             </div>
@@ -213,7 +218,7 @@
                 <i class="fas fa-stop"></i>
                 <span data-i18n="stopBatch">إيقاف السلسلة</span>
               </button>
-              <button type="button" class="btn-clear-completed-batch" id="clearCompletedBatchBtn" title="حذف المكتمل والفاشل من القائمة دون التأثير على العداد">
+              <button type="button" class="btn-clear-completed-batch" id="clearCompletedBatchBtn" data-i18n-title="clearCompletedTitle" title="حذف المكتمل والفاشل من القائمة دون التأثير على العداد">
                 <i class="fas fa-check-double"></i>
                 <span data-i18n="clearCompletedBatch">مسح المكتمل</span>
               </button>
@@ -338,38 +343,38 @@
               <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); padding:8px 14px; border-bottom:1px solid rgba(255,255,255,0.08);">
                 <span style="font-size:12px; color:var(--primary-light); font-weight:bold; display:flex; align-items:center; gap:6px;">
                   <i class="fas fa-crosshairs" style="color:#6366f1;"></i>
-                  <span>شاشة الفريم المعاين لقص المقطع (Frame Cut Preview)</span>
+                  <span data-i18n="clipFrameTitle">شاشة الفريم المعاين لقص المقطع</span>
                 </span>
                 <span id="clipCurrentFrameBadge" style="font-size:11px; background:rgba(99,102,241,0.2); color:#a5b4fc; padding:3px 10px; border-radius:10px; font-weight:bold; font-family:monospace;">
-                  00:00:00 (الفريم الحالي)
+                  00:00:00 (<span data-i18n="clipCurrentFrame">الفريم الحالي</span>)
                 </span>
               </div>
               
               <div style="width:100%; min-height:220px; max-height:360px; display:flex; align-items:center; justify-content:center; background:#000; position:relative;">
                 <div id="clipFrameBadgeOverlay" style="position:absolute; top:10px; right:10px; background:rgba(15,23,42,0.9); color:#34d399; border:1px solid #10b981; padding:5px 12px; border-radius:20px; font-weight:bold; font-size:12px; z-index:10; backdrop-filter:blur(6px); display:none;">
-                  <i class="fas fa-eye"></i> فريم بداية القص: 00:00:00
+                  <i class="fas fa-eye"></i> <span data-i18n="clipStartOverlay">فريم بداية القص</span>: 00:00:00
                 </div>
                 <video id="clipVideoPlayer" controls playsinline style="width:100%; max-height:340px; display:none; object-fit:contain;"></video>
                 <img id="clipFrameImg" src="" style="width:100%; max-height:340px; display:none; object-fit:contain;" alt="إطار القص">
                 <div id="clipPlayerPlaceholder" style="color:var(--text-secondary); text-align:center; padding:24px;">
                   <i class="fas fa-film" style="font-size:36px; color:var(--primary); margin-bottom:8px; display:block;"></i>
-                  <p style="font-size:13px; margin:0;">اختر فيديو وسحب شريط القص لمعاينة الفريم والدقيقة فورياً هنا</p>
+                  <p style="font-size:13px; margin:0;" data-i18n="clipFramePlaceholder">اختر فيديو وسحب شريط القص لمعاينة الفريم والدقيقة فورياً هنا</p>
                 </div>
               </div>
 
               <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.9); padding:8px 14px; border-top:1px solid rgba(255,255,255,0.08); flex-wrap:wrap; gap:8px;">
                 <div style="display:flex; gap:8px;">
-                  <button type="button" class="btn-browse" id="clipPreviewStartBtn" style="font-size:12px; padding:6px 12px; background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.4);" title="معاينة فريم البداية">
-                    <i class="fas fa-step-backward"></i> فريم البداية
+                  <button type="button" class="btn-browse" id="clipPreviewStartBtn" style="font-size:12px; padding:6px 12px; background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.4);" data-i18n-title="clipStartFrame" title="معاينة فريم البداية">
+                    <i class="fas fa-step-backward"></i> <span data-i18n="clipStartFrame">فريم البداية</span>
                   </button>
-                  <button type="button" class="btn-browse" id="clipPlayTrimmedBtn" style="font-size:12px; padding:6px 12px; background:linear-gradient(135deg,#10b981,#059669); color:#fff;" title="تشغيل ومعاينة المقطع المحدد فقط">
-                    <i class="fas fa-play"></i> تشغيل المقطع قصاً
+                  <button type="button" class="btn-browse" id="clipPlayTrimmedBtn" style="font-size:12px; padding:6px 12px; background:linear-gradient(135deg,#10b981,#059669); color:#fff;" data-i18n-title="clipPlayTrimmed" title="تشغيل ومعاينة المقطع المحدد فقط">
+                    <i class="fas fa-play"></i> <span data-i18n="clipPlayTrimmed">تشغيل المقطع قصاً</span>
                   </button>
-                  <button type="button" class="btn-browse" id="clipPreviewEndBtn" style="font-size:12px; padding:6px 12px; background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.4);" title="معاينة فريم النهاية">
-                    <i class="fas fa-step-forward"></i> فريم النهاية
+                  <button type="button" class="btn-browse" id="clipPreviewEndBtn" style="font-size:12px; padding:6px 12px; background:rgba(99,102,241,0.2); color:#a5b4fc; border:1px solid rgba(99,102,241,0.4);" data-i18n-title="clipEndFrame" title="معاينة فريم النهاية">
+                    <i class="fas fa-step-forward"></i> <span data-i18n="clipEndFrame">فريم النهاية</span>
                   </button>
                 </div>
-                <span style="font-size:11px; color:var(--text-secondary);">حرّك مقبض البداية أو النهاية أو انقر على شريط الفيديو لتغيير الفريم المباشر</span>
+                <span style="font-size:11px; color:var(--text-secondary);" data-i18n="clipHint">حرّك مقبض البداية أو النهاية أو انقر على شريط الفيديو لتغيير الفريم المباشر</span>
               </div>
             </div>
 
@@ -575,7 +580,7 @@
         <div class="download-options" id="downloadOptions">
           <div class="options-group options-group-unified" id="unifiedQualityPanel">
             <h4><i class="fas fa-sliders-h"></i> <span data-i18n="qualityTitle">خيارات الجودة</span></h4>
-            <p class="options-hint" id="qualityHint" data-i18n-dynamic="true">اختر نوع التحميل ثم الجودة — من الأقل حتى 8K، والافتراضي أقصى جودة بدون سقف</p>
+            <p class="options-hint" id="qualityHint" data-i18n-dynamic="true">اختر نوع التحميل ثم الجودة — 144p، HD، Full HD، 2K، 4K، 8K</p>
 
             <div class="download-type-tabs" id="downloadTypeTabs">
               <button type="button" class="download-type-tab active" data-type="video-audio">
@@ -670,14 +675,23 @@
       <section class="section" id="favoritesSection">
         <div class="favorites-header">
           <div>
-            <h3><i class="fas fa-star"></i> <span data-i18n="favoritesTitle">القنوات المفضلة</span></h3>
+            <h3>
+              <i class="fas fa-star"></i>
+              <span data-i18n="favoritesTitle">القنوات المفضلة</span>
+              <button type="button" class="fav-global-bell" id="favoritesGlobalBellBtn" title="كل الإشعارات الجديدة">
+                <i class="fas fa-bell"></i>
+                <span class="fav-bell-count" id="favoritesGlobalBellCount" hidden>0</span>
+              </button>
+            </h3>
             <p class="favorites-desc" data-i18n="favoritesDesc">احفظ روابط القنوات التي تتابعها، رتّبها حسب تفضيلك، واستقبل إشعاراً عند صدور مقطع جديد.</p>
           </div>
           <button type="button" class="btn-fav-check-all" id="checkAllFavoritesBtn" title="فحص التحديثات الآن">
-            <i class="fas fa-bell"></i>
+            <i class="fas fa-sync-alt"></i>
             <span data-i18n="favoritesCheckAll">فحص التحديثات</span>
           </button>
         </div>
+
+        <div class="fav-global-inbox hidden" id="favoritesGlobalInbox"></div>
 
         <div class="favorites-add-box">
           <textarea id="favoriteChannelInput" rows="3" spellcheck="false" data-i18n-placeholder="favoritesPlaceholder" placeholder="الصق رابط قناة أو أكثر (رابط في كل سطر)&#10;مثال: https://www.youtube.com/@channel"></textarea>
@@ -694,6 +708,37 @@
         </div>
 
         <div class="favorites-list" id="favoritesList"></div>
+      </section>
+
+      <section class="section" id="watchlaterSection">
+        <div class="watchlater-header">
+          <div>
+            <h3><i class="fas fa-clock"></i> <span data-i18n="watchLaterTitle">للمشاهدة لاحقاً</span></h3>
+            <p class="watchlater-desc" data-i18n="watchLaterDesc">احفظ روابط تريد مشاهدتها لاحقاً حسب النوع والمنصة والقناة. اضغط الرابط لفتحه في المتصفح.</p>
+          </div>
+        </div>
+
+        <div class="watchlater-add-box">
+          <input type="text" id="watchLaterUrlInput" data-i18n-placeholder="watchLaterUrlPlaceholder" placeholder="الصق رابط الفيديو أو المقطع هنا" spellcheck="false" autocomplete="off">
+          <input type="text" id="watchLaterTitleInput" data-i18n-placeholder="watchLaterTitlePlaceholder" placeholder="عنوان اختياري" spellcheck="false" autocomplete="off">
+          <div class="watchlater-add-row">
+            <input type="text" id="watchLaterChannelInput" data-i18n-placeholder="watchLaterChannelPlaceholder" placeholder="رابط القناة (اختياري) — يفتح في المتصفح" spellcheck="false" autocomplete="off">
+            <select id="watchLaterCategorySelect" aria-label="category"></select>
+          </div>
+          <div class="watchlater-add-actions">
+            <button type="button" class="btn-wl-paste" id="pasteWatchLaterBtn">
+              <i class="fas fa-paste"></i>
+              <span data-i18n="watchLaterPaste">لصق</span>
+            </button>
+            <button type="button" class="btn-wl-add" id="addWatchLaterBtn">
+              <i class="fas fa-plus"></i>
+              <span data-i18n="watchLaterAdd">إضافة للقائمة</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="watchlater-filters" id="watchLaterFilters"></div>
+        <div class="watchlater-list" id="watchLaterList"></div>
       </section>
 
       <section class="section" id="historySection">
@@ -742,36 +787,36 @@
             </select>
           </div>
 
-          <!-- Speed Limiter & Retries (نقل للإعدادات بناءً على الطلب) -->
+          <!-- Speed Limiter & Retries -->
           <div class="setting-item">
-            <label><i class="fas fa-tachometer-alt" style="color:var(--primary-light);"></i> أقصى سرعة تنزيل (Bandwidth Limit)</label>
+            <label><i class="fas fa-tachometer-alt" style="color:var(--primary-light);"></i> <span data-i18n="speedLimitLabel">أقصى سرعة تنزيل</span></label>
             <select id="settingSpeedLimit">
-              <option value="unlimited">بدون حد (أقصى سرعة فائقة)</option>
-              <option value="10M">10 MB/s (سريع جداً)</option>
-              <option value="5M">5 MB/s (متوسط معقول)</option>
-              <option value="2M">2 MB/s (توفير الباقة)</option>
-              <option value="1M">1 MB/s (خلفية النظام)</option>
+              <option value="unlimited" data-i18n="speedUnlimited">بدون حد (أقصى سرعة فائقة)</option>
+              <option value="10M" data-i18n="speedLimit10M">10 MB/s (سريع جداً)</option>
+              <option value="5M" data-i18n="speedLimit5M">5 MB/s (متوسط معقول)</option>
+              <option value="2M" data-i18n="speedLimit2M">2 MB/s (توفير الباقة)</option>
+              <option value="1M" data-i18n="speedLimit1M">1 MB/s (خلفية النظام)</option>
             </select>
           </div>
 
           <div class="setting-item">
-            <label><i class="fas fa-redo" style="color:var(--primary-light);"></i> إعادة المحاولات التلقائية عند الانقطاع</label>
+            <label><i class="fas fa-redo" style="color:var(--primary-light);"></i> <span data-i18n="autoRetryLabel">إعادة المحاولات التلقائية عند الانقطاع</span></label>
             <select id="settingAutoRetryCount">
-              <option value="10">10 محاولات تلقائية (استقرار فائق)</option>
-              <option value="5">5 محاولات</option>
-              <option value="3">3 محاولات</option>
+              <option value="10" data-i18n="autoRetry10">10 محاولات تلقائية (استقرار فائق)</option>
+              <option value="5" data-i18n="autoRetry5">5 محاولات</option>
+              <option value="3" data-i18n="autoRetry3">3 محاولات</option>
             </select>
           </div>
 
-          <!-- Download Scheduler (نقل للإعدادات بناءً على الطلب) -->
+          <!-- Download Scheduler -->
           <div class="setting-item" style="flex-direction:column; align-items:flex-start; gap:8px; border-top:1px solid rgba(255,255,255,0.08); padding-top:14px;">
-            <label style="font-weight:bold; color:#fff;"><i class="fas fa-clock" style="color:#10b981;"></i> جدولة التحميل التلقائي (Download Scheduler)</label>
-            <p style="font-size:12px; color:var(--text-secondary); margin:0;">حدد وقتاً مستقبلياً لتنزيل سلسلة الروابط تلقائياً (مثلاً ليلاً):</p>
+            <label style="font-weight:bold; color:#fff;"><i class="fas fa-clock" style="color:#10b981;"></i> <span data-i18n="schedulerTitle">جدولة التحميل التلقائي</span></label>
+            <p style="font-size:12px; color:var(--text-secondary); margin:0;" data-i18n="schedulerDesc">حدد وقتاً مستقبلياً لتنزيل سلسلة الروابط تلقائياً (مثلاً ليلاً):</p>
             <div style="display:flex; gap:8px; width:100%; flex-wrap:wrap; align-items:center; margin-top:4px;">
               <input type="time" id="settingScheduleTime" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:13px;">
-              <input type="number" id="settingScheduleDelayMin" placeholder="أو بعد دقائق (مثلاً 30)" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:13px; flex:1; min-width:140px;">
+              <input type="number" id="settingScheduleDelayMin" data-i18n-placeholder="schedulerDelayPlaceholder" placeholder="أو بعد دقائق (مثلاً 30)" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:13px; flex:1; min-width:140px;">
               <button type="button" class="btn-browse" id="settingStartScheduleBtn" style="background:linear-gradient(135deg,#10b981,#059669); color:#fff; font-size:12px;">
-                <i class="fas fa-calendar-check"></i> تفعيل الجدولة
+                <i class="fas fa-calendar-check"></i> <span data-i18n="schedulerBtn">تفعيل الجدولة</span>
               </button>
             </div>
             <div id="settingScheduleStatus" style="font-size:12px; color:#34d399; margin-top:4px;"></div>

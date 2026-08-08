@@ -66,25 +66,25 @@ function updateAspectBadge() {
   const aspectBadge = document.getElementById('aspectBadge');
   if (!aspectBadge) return;
   const aspectLabels = {
-    default: 'حر',
+    default: t('aspectFree'),
     '16:9': '16:9',
     '1:1': '1:1',
     '9:16': '9:16',
     '4:5': '4:5',
     '21:9': '21:9',
-    custom: 'مخصص'
+    custom: t('aspectCustomShort')
   };
   const sizeLabels = {
-    original: 'حجم أصلي',
+    original: t('sizeOriginal'),
     '480': '480px',
     '720': '720px',
     '1080': '1080px',
-    custom: 'مخصص'
+    custom: t('aspectCustomShort')
   };
   const a = aspectLabels[imageAspect] || imageAspect;
   const s = sizeLabels[imageOutputSize] || imageOutputSize;
   const cropTxt = cropToolEnabled
-    ? ` · قص ${Math.round(cropRect.w)}×${Math.round(cropRect.h)}%`
+    ? tf('cropBadge', { w: Math.round(cropRect.w), h: Math.round(cropRect.h) })
     : '';
   if (imageOutputSize === 'custom') {
     const w = document.getElementById('customAspectWidth')?.value || 1080;
@@ -620,32 +620,30 @@ function getPreferredDefaultQuality() {
 }
 
 function getBatchQualityChoices() {
-  // من الأقل للأعلى + أقصى جودة بدون سقف كافتراضي
   return [
-    { value: 'best', label: 'أقصى جودة متاحة (بدون سقف — حتى 8K)' },
-    { value: '144', label: '144p — منخفضة جداً' },
-    { value: '240', label: '240p — منخفضة' },
-    { value: '360', label: '360p' },
-    { value: '480', label: '480p' },
-    { value: '720', label: '720p HD' },
-    { value: '1080', label: '1080p Full HD' },
-    { value: '1440', label: '1440p · 2K QHD' },
-    { value: '2160', label: '2160p · 4K UHD' },
-    { value: '4320', label: '4320p · 8K' }
+    { value: 'best', label: t('qualityBest') },
+    { value: '144', label: t('quality144') },
+    { value: '240', label: t('quality240') },
+    { value: '360', label: t('quality360') },
+    { value: '480', label: t('quality480') },
+    { value: '720', label: t('quality720') },
+    { value: '1080', label: t('quality1080') },
+    { value: '1440', label: t('quality1440') },
+    { value: '2160', label: t('quality2160') },
+    { value: '4320', label: t('quality4320') }
   ];
 }
 
 function getBatchAudioQualityChoices() {
-  // من أقل معدل بت إلى أقصى جودة صوت بدون سقف
   return [
-    { value: 'best', label: 'أقصى جودة صوت متاحة (بدون سقف)' },
-    { value: '64', label: '64 kbps — منخفضة جداً' },
-    { value: '96', label: '96 kbps — منخفضة' },
-    { value: '128', label: '128 kbps — متوسطة' },
-    { value: '160', label: '160 kbps' },
-    { value: '192', label: '192 kbps — عالية' },
-    { value: '256', label: '256 kbps — فائقة' },
-    { value: '320', label: '320 kbps — أقصى MP3' }
+    { value: 'best', label: t('audioQualityBest') },
+    { value: '64', label: t('audioQuality64') },
+    { value: '96', label: t('audioQuality96') },
+    { value: '128', label: t('audioQuality128') },
+    { value: '160', label: t('audioQuality160') },
+    { value: '192', label: t('audioQuality192') },
+    { value: '256', label: t('audioQuality256') },
+    { value: '320', label: t('audioQuality320') }
   ];
 }
 
@@ -663,7 +661,7 @@ function renderBatchQualityOptions(selected = 'best', type = 'video-audio') {
     const audioOpts = getBatchAudioQualityChoices().map((opt) => (
       `<option value="${opt.value}" ${current === opt.value ? 'selected' : ''}>${opt.label}</option>`
     )).join('');
-    return `<optgroup label="فيديو">${videoOpts}</optgroup><optgroup label="صوت MP3">${audioOpts}</optgroup>`;
+    return `<optgroup label="${escapeHtml(t('optgroupVideo'))}">${videoOpts}</optgroup><optgroup label="${escapeHtml(t('optgroupAudio'))}">${audioOpts}</optgroup>`;
   }
   return getBatchQualityChoices().map((opt) => (
     `<option value="${opt.value}" ${current === opt.value ? 'selected' : ''}>${opt.label}</option>`
@@ -847,23 +845,66 @@ function getStoredDownloadPath() {
   return localStorage.getItem(DEFAULT_DOWNLOAD_PATH_KEY) || '';
 }
 
-function getVideoQualityTiers() {
+function getStandardVideoQualities() {
   return [
-    { key: 'low', label: t('tierLow'), min: 0, max: 360 },
-    { key: 'medium', label: t('tierMedium'), min: 361, max: 720 },
-    { key: 'high', label: t('tierHigh'), min: 721, max: 1080 },
-    { key: 'uhd', label: t('tierUhd'), min: 1081, max: 2160 },
-    { key: 'eightk', label: t('tier8k'), min: 2161, max: Infinity }
+    { height: 144, label: t('quality144'), tier: 'low' },
+    { height: 240, label: t('quality240'), tier: 'low' },
+    { height: 360, label: t('quality360'), tier: 'medium' },
+    { height: 480, label: t('quality480'), tier: 'medium' },
+    { height: 720, label: t('quality720'), tier: 'high' },
+    { height: 1080, label: t('quality1080'), tier: 'high' },
+    { height: 1440, label: t('quality1440'), tier: 'uhd' },
+    { height: 2160, label: t('quality2160'), tier: 'uhd' },
+    { height: 4320, label: t('quality4320'), tier: 'eightk' }
   ];
 }
 
-function getAudioQualityTiers() {
+function getStandardAudioQualities() {
   return [
-    { key: 'low', label: t('tierAudioLow'), min: 0, max: 96 },
-    { key: 'medium', label: t('tierAudioMedium'), min: 97, max: 160 },
-    { key: 'high', label: t('tierAudioHigh'), min: 161, max: 256 },
-    { key: 'uhd', label: t('tierAudioUltra'), min: 257, max: Infinity }
+    { abr: 64, label: t('audioQuality64'), tier: 'low' },
+    { abr: 96, label: t('audioQuality96'), tier: 'low' },
+    { abr: 128, label: t('audioQuality128'), tier: 'medium' },
+    { abr: 160, label: t('audioQuality160'), tier: 'medium' },
+    { abr: 192, label: t('audioQuality192'), tier: 'high' },
+    { abr: 256, label: t('audioQuality256'), tier: 'high' },
+    { abr: 320, label: t('audioQuality320'), tier: 'uhd' }
   ];
+}
+
+function getVideoTierForHeight(height) {
+  const h = Number(height) || 0;
+  if (h <= 240) return 'low';
+  if (h <= 480) return 'medium';
+  if (h <= 1080) return 'high';
+  if (h <= 2160) return 'uhd';
+  return 'eightk';
+}
+
+function getAudioTierForAbr(abr) {
+  const a = Number(abr) || 0;
+  if (a <= 96) return 'low';
+  if (a <= 160) return 'medium';
+  if (a <= 256) return 'high';
+  return 'uhd';
+}
+
+function getVideoTierMeta() {
+  return {
+    low: { key: 'low', label: t('tierLow') },
+    medium: { key: 'medium', label: t('tierMedium') },
+    high: { key: 'high', label: t('tierHigh') },
+    uhd: { key: 'uhd', label: t('tierUhd') },
+    eightk: { key: 'eightk', label: t('tier8k') }
+  };
+}
+
+function getAudioTierMeta() {
+  return {
+    low: { key: 'low', label: t('tierAudioLow') },
+    medium: { key: 'medium', label: t('tierAudioMedium') },
+    high: { key: 'high', label: t('tierAudioHigh') },
+    uhd: { key: 'uhd', label: t('tierAudioUltra') }
+  };
 }
 
 // Clean filename
@@ -1061,9 +1102,9 @@ function updateTimelineUI() {
   elements.videoDurationLabel.textContent = formatTimecode(videoDuration);
 
   if (activeCutHandle === 'end') {
-    syncClipFramePreview(clipEnd, 'فريم نهاية القص');
+    syncClipFramePreview(clipEnd, t('clipEndOverlay'));
   } else {
-    syncClipFramePreview(clipStart, 'فريم بداية القص');
+    syncClipFramePreview(clipStart, t('clipStartOverlay'));
   }
 }
 
@@ -1095,7 +1136,7 @@ function initStudioTimeline() {
   elements.frameTimeInput.value = formatTimecode(0);
   buildTimelineRuler();
   updateTimelineUI();
-  syncClipFramePreview(clipStart, 'فريم البداية');
+  syncClipFramePreview(clipStart, t('clipStartFrame'));
 }
 
 function updateDownloadButtonText() {
@@ -1170,6 +1211,7 @@ function refreshUnifiedQualityGrid(keepSelection = false) {
   }
 
   const previousHeight = selectedHeight;
+  const previousAbr = selectedAbr;
   const previousFormat = selectedFormat;
   const type = getActiveDownloadType();
 
@@ -1186,18 +1228,32 @@ function refreshUnifiedQualityGrid(keepSelection = false) {
     selectedHasAudio = type === 'video-audio';
   }
 
-  if (keepSelection && previousFormat) {
+  if (!keepSelection) {
+    return;
+  }
+
+  if (previousFormat) {
     const match = elements.unifiedQualityGrid.querySelector(`[data-format-id="${previousFormat}"]`);
     if (match) {
       match.click();
       return;
     }
-    if (previousHeight) {
-      const heightMatch = [...elements.unifiedQualityGrid.querySelectorAll('.quality-option')]
-        .find((card) => card.querySelector('.quality-label')?.textContent === `${previousHeight}p`);
-      if (heightMatch) {
-        heightMatch.click();
-      }
+  }
+
+  if (type === 'audio' && previousAbr) {
+    const abrMatch = [...elements.unifiedQualityGrid.querySelectorAll('.quality-option')]
+      .find((card) => card.dataset.abr === String(previousAbr));
+    if (abrMatch) {
+      abrMatch.click();
+      return;
+    }
+  }
+
+  if (previousHeight) {
+    const heightMatch = [...elements.unifiedQualityGrid.querySelectorAll('.quality-option')]
+      .find((card) => card.dataset.height === String(previousHeight));
+    if (heightMatch) {
+      heightMatch.click();
     }
   }
 }
@@ -1244,7 +1300,7 @@ function bindStudioEvents() {
       clipStart = Math.max(0, clipEnd - 1);
     }
     scheduleTimelineUpdate();
-    syncClipFramePreview(clipStart, 'فريم بداية القص');
+    syncClipFramePreview(clipStart, t('clipStartOverlay'));
   });
 
   elements.clipEndRange.addEventListener('input', () => {
@@ -1255,21 +1311,21 @@ function bindStudioEvents() {
       clipEnd = Math.min(maxDuration, clipStart + 1);
     }
     scheduleTimelineUpdate();
-    syncClipFramePreview(clipEnd, 'فريم نهاية القص');
+    syncClipFramePreview(clipEnd, t('clipEndOverlay'));
   });
 
   elements.clipStartTime.addEventListener('change', () => {
     activeCutHandle = 'start';
     clipStart = parseTimecode(elements.clipStartTime.value);
     updateTimelineUI();
-    syncClipFramePreview(clipStart, 'فريم بداية القص');
+    syncClipFramePreview(clipStart, t('clipStartOverlay'));
   });
 
   elements.clipEndTime.addEventListener('change', () => {
     activeCutHandle = 'end';
     clipEnd = parseTimecode(elements.clipEndTime.value);
     updateTimelineUI();
-    syncClipFramePreview(clipEnd, 'فريم نهاية القص');
+    syncClipFramePreview(clipEnd, t('clipEndOverlay'));
   });
 
   const timelineTrackEl = document.getElementById('timelineTrack');
@@ -1280,7 +1336,7 @@ function bindStudioEvents() {
       const rect = timelineTrackEl.getBoundingClientRect();
       const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const clickedTime = pct * videoDuration;
-      syncClipFramePreview(clickedTime, 'الفريم المختار');
+      syncClipFramePreview(clickedTime, t('clipSelectedFrame'));
     });
   }
 
@@ -1292,7 +1348,7 @@ function bindStudioEvents() {
     clipPreviewStartBtn.dataset.bound = 'true';
     clipPreviewStartBtn.addEventListener('click', () => {
       activeCutHandle = 'start';
-      syncClipFramePreview(clipStart, 'فريم بداية القص');
+      syncClipFramePreview(clipStart, t('clipStartOverlay'));
     });
   }
 
@@ -1300,7 +1356,7 @@ function bindStudioEvents() {
     clipPreviewEndBtn.dataset.bound = 'true';
     clipPreviewEndBtn.addEventListener('click', () => {
       activeCutHandle = 'end';
-      syncClipFramePreview(clipEnd, 'فريم نهاية القص');
+      syncClipFramePreview(clipEnd, t('clipEndOverlay'));
     });
   }
 
@@ -1867,7 +1923,16 @@ function createTierHeader(grid, tier) {
 function createQualityCard({ label, formatText, sizeText, type, format, grid, autoSelect = false, badge = '' }) {
   const card = document.createElement('div');
   card.className = 'quality-option';
-  card.dataset.formatId = format.formatId || format.height || 'best';
+  if (format.fallback) {
+    card.classList.add('quality-fallback');
+  }
+  card.dataset.formatId = String(format.formatId || format.height || format.abr || 'best');
+  if (format.height != null) {
+    card.dataset.height = String(format.height);
+  }
+  if (format.abr != null) {
+    card.dataset.abr = String(format.abr);
+  }
   card.innerHTML = `
     ${badge ? `<span class="quality-badge">${badge}</span>` : ''}
     <div class="quality-label">${label}</div>
@@ -1887,41 +1952,60 @@ function createQualityCard({ label, formatText, sizeText, type, format, grid, au
 function populateVideoGrid(grid, type, formats, formatLabel) {
   grid.innerHTML = '';
 
-  const sorted = [...formats].sort((a, b) => (a.height || 0) - (b.height || 0));
-  let hasAnyQuality = false;
+  const sourceByHeight = new Map();
+  (formats || []).forEach((format) => {
+    const height = Number(format.height);
+    if (!Number.isFinite(height) || height <= 0) return;
+    const current = sourceByHeight.get(height);
+    if (!current || (format.size || 0) > (current.size || 0)) {
+      sourceByHeight.set(height, format);
+    }
+  });
 
-  getVideoQualityTiers().forEach((tier) => {
-    const tierFormats = sorted.filter((format) => format.height >= tier.min && format.height <= tier.max);
-    if (tierFormats.length === 0) return;
+  const maxSourceHeight = sourceByHeight.size ? Math.max(...sourceByHeight.keys()) : 0;
+  const standardHeights = new Set(getStandardVideoQualities().map((q) => q.height));
+  const extraSource = [...sourceByHeight.keys()]
+    .filter((height) => !standardHeights.has(height))
+    .sort((a, b) => a - b)
+    .map((height) => {
+      const source = sourceByHeight.get(height);
+      return {
+        height,
+        label: source?.quality || `${height}p`,
+        tier: getVideoTierForHeight(height)
+      };
+    });
 
-    hasAnyQuality = true;
-    createTierHeader(grid, tier);
+  const choices = [...getStandardVideoQualities(), ...extraSource]
+    .sort((a, b) => a.height - b.height);
+  const tierMeta = getVideoTierMeta();
 
-    tierFormats.forEach((format) => {
+  ['low', 'medium', 'high', 'uhd', 'eightk'].forEach((tierKey) => {
+    const tierChoices = choices.filter((choice) => choice.tier === tierKey);
+    if (!tierChoices.length) return;
+
+    createTierHeader(grid, tierMeta[tierKey]);
+
+    tierChoices.forEach((choice) => {
+      const source = sourceByHeight.get(choice.height);
+      const aboveSource = maxSourceHeight > 0 && choice.height > maxSourceHeight;
       createQualityCard({
-        label: format.quality,
+        label: choice.label,
         formatText: formatLabel,
-        sizeText: formatSize(format.size),
+        sizeText: source?.size
+          ? formatSize(source.size)
+          : (aboveSource ? t('qualitySizeIfAvailable') : t('qualitySizeUpTo')),
         type,
-        format,
+        format: {
+          formatId: String(choice.height),
+          height: choice.height,
+          size: source?.size || 0,
+          fallback: !source
+        },
         grid
       });
     });
   });
-
-  if (!hasAnyQuality && sorted.length > 0) {
-    createTierHeader(grid, { key: 'all', label: t('tierAll') });
-    sorted.forEach((format) => {
-      createQualityCard({
-        label: format.quality,
-        formatText: formatLabel,
-        sizeText: formatSize(format.size),
-        type,
-        format,
-        grid
-      });
-    });
-  }
 
   createTierHeader(grid, { key: 'best', label: t('tierBest') });
   const preferred = getPreferredDefaultQuality();
@@ -1929,13 +2013,8 @@ function populateVideoGrid(grid, type, formats, formatLabel) {
   let preferredCard = null;
 
   if (Number.isFinite(preferredHeight) && preferredHeight > 0) {
-    const matchFormat = sorted
-      .filter((f) => (f.height || 0) <= preferredHeight)
-      .sort((a, b) => (b.height || 0) - (a.height || 0))[0];
-    if (matchFormat) {
-      preferredCard = [...grid.querySelectorAll('.quality-option')]
-        .find((card) => card.dataset.formatId === String(matchFormat.formatId || matchFormat.height));
-    }
+    preferredCard = [...grid.querySelectorAll('.quality-option')]
+      .find((card) => card.dataset.height === String(preferredHeight));
   }
 
   createQualityCard({
@@ -1957,47 +2036,60 @@ function populateVideoGrid(grid, type, formats, formatLabel) {
 function populateAudioGrid(formats, grid = elements.unifiedQualityGrid) {
   grid.innerHTML = '';
 
-  const sorted = [...formats].sort((a, b) => (a.abr || 0) - (b.abr || 0));
-  let hasAnyQuality = false;
+  const sourceByAbr = new Map();
+  (formats || []).forEach((format) => {
+    const abr = Number(format.abr);
+    if (!Number.isFinite(abr) || abr <= 0) return;
+    const current = sourceByAbr.get(abr);
+    if (!current || (format.size || 0) > (current.size || 0)) {
+      sourceByAbr.set(abr, format);
+    }
+  });
 
-  getAudioQualityTiers().forEach((tier) => {
-    const tierFormats = sorted.filter((format) => {
-      const abr = format.abr || 0;
-      const min = tier.min ?? 0;
-      const max = tier.max ?? Infinity;
-      return abr >= min && abr <= max;
+  const maxSourceAbr = sourceByAbr.size ? Math.max(...sourceByAbr.keys()) : 0;
+  const standardAbrs = new Set(getStandardAudioQualities().map((q) => q.abr));
+  const extraSource = [...sourceByAbr.keys()]
+    .filter((abr) => !standardAbrs.has(abr))
+    .sort((a, b) => a - b)
+    .map((abr) => {
+      const source = sourceByAbr.get(abr);
+      return {
+        abr,
+        label: source?.quality || `${abr} kbps`,
+        tier: getAudioTierForAbr(abr)
+      };
     });
 
-    if (tierFormats.length === 0) return;
+  const choices = [...getStandardAudioQualities(), ...extraSource]
+    .sort((a, b) => a.abr - b.abr);
+  const tierMeta = getAudioTierMeta();
 
-    hasAnyQuality = true;
-    createTierHeader(grid, tier);
+  ['low', 'medium', 'high', 'uhd'].forEach((tierKey) => {
+    const tierChoices = choices.filter((choice) => choice.tier === tierKey);
+    if (!tierChoices.length) return;
 
-    tierFormats.forEach((format) => {
+    createTierHeader(grid, tierMeta[tierKey]);
+
+    tierChoices.forEach((choice) => {
+      const source = sourceByAbr.get(choice.abr);
+      const aboveSource = maxSourceAbr > 0 && choice.abr > maxSourceAbr;
       createQualityCard({
-        label: format.quality,
+        label: choice.label,
         formatText: 'MP3',
-        sizeText: formatSize(format.size),
+        sizeText: source?.size
+          ? formatSize(source.size)
+          : (aboveSource ? t('qualitySizeIfAvailable') : t('qualitySizeUpTo')),
         type: 'audio',
-        format,
+        format: {
+          formatId: String(choice.abr),
+          abr: choice.abr,
+          size: source?.size || 0,
+          fallback: !source
+        },
         grid
       });
     });
   });
-
-  if (!hasAnyQuality && sorted.length > 0) {
-    createTierHeader(grid, { key: 'all', label: t('tierAll') });
-    sorted.forEach((format) => {
-      createQualityCard({
-        label: format.quality,
-        formatText: 'MP3',
-        sizeText: formatSize(format.size),
-        type: 'audio',
-        format,
-        grid
-      });
-    });
-  }
 
   createTierHeader(grid, { key: 'best', label: t('tierAudioBest') });
   createQualityCard({
@@ -2184,7 +2276,7 @@ async function startDownload() {
       elements.successPath.textContent = result.path;
       const openLabel = document.getElementById('openDownloadedFileLabel');
       if (openLabel) {
-        openLabel.textContent = studioMode === 'image' ? 'فتح الصورة' : 'فتح الملف';
+        openLabel.textContent = studioMode === 'image' ? t('openImage') : t('openFile');
       }
       showStatus(t('downloadSuccessStatus'), 'success');
       showDownloadNotification(currentVideoInfo?.title, result.path);
@@ -2303,10 +2395,13 @@ function escapeHtml(text) {
 // —— Favorites (preferred channels) ——
 const FAVORITES_KEY = 'vmFavoriteChannels';
 const FAVORITES_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+const FAVORITES_PAGE_SIZE = 100;
 let favoriteChannels = [];
 let favoritesExpandedId = null;
 let favoritesChecking = false;
 let favoritesCheckTimer = null;
+let favoritesGlobalInboxOpen = false;
+let favoritesPage = 0;
 
 function tf(key, vars = {}) {
   let s = t(key);
@@ -2360,6 +2455,78 @@ function guessChannelNameFromUrl(url) {
   }
 }
 
+function cleanFavoriteChannelName(name) {
+  if (!name) return '';
+  let s = String(name).replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+  try { s = decodeURIComponent(s); } catch { /* keep raw */ }
+  s = s.replace(/^(Uploads from|Videos from|Streams from)\s+/i, '').trim();
+  s = s.replace(/\s*[-–—|]\s*(Videos|Streams|Shorts|Live|Releases|Playlists|Uploads|Home|Featured|فيديوهات|مقاطع|مباشر)\s*$/i, '').trim();
+  s = s.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
+  s = s.replace(/\s+/g, ' ').trim();
+  if (!s || /^(videos|streams|shorts|live|uploads|home|featured|na)$/i.test(s)) return '';
+  if (/^UC[\w-]{20,}$/i.test(s)) return '';
+  return s;
+}
+
+function getUrlChannelSlug(url) {
+  try {
+    const u = new URL(url);
+    const m =
+      u.pathname.match(/\/@([^/]+)/) ||
+      u.pathname.match(/\/c\/([^/]+)/) ||
+      u.pathname.match(/\/user\/([^/]+)/) ||
+      u.pathname.match(/\/channel\/([^/]+)/);
+    if (!m?.[1]) return '';
+    try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+  } catch {
+    return '';
+  }
+}
+
+function isUrlDerivedChannelName(name, url) {
+  const cleaned = cleanFavoriteChannelName(name);
+  if (!cleaned) return true;
+  const slug = getUrlChannelSlug(url);
+  if (!slug) return false;
+  const a = cleaned.toLowerCase();
+  const b = String(slug).toLowerCase();
+  return a === b || a === `@${b}` || a.replace(/^@/, '') === b.replace(/^@/, '');
+}
+
+function isWeakFavoriteChannelName(name, url) {
+  const cleaned = cleanFavoriteChannelName(name);
+  if (!cleaned) return true;
+  if (cleaned.length < 2) return true;
+  if (/^https?:\/\//i.test(cleaned)) return true;
+  if (cleaned.startsWith('@')) return true;
+  if (isUrlDerivedChannelName(cleaned, url)) return true;
+  const lower = cleaned.toLowerCase();
+  if (['videos', 'streams', 'shorts', 'playlists', 'about', 'featured', 'home', 'uploads'].includes(lower)) {
+    return true;
+  }
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+    if (lower === host) return true;
+  } catch { /* ignore */ }
+  return false;
+}
+
+function preferFavoriteChannelName(existingName, fetchedName, url) {
+  const cleanedFetched = cleanFavoriteChannelName(fetchedName);
+  const cleanedExisting = cleanFavoriteChannelName(existingName);
+
+  // اسم المنصة مصدر الحقيقة دائماً عندما يكون صالحاً (وليس @handle أو slug من الرابط)
+  if (cleanedFetched && !isWeakFavoriteChannelName(cleanedFetched, url)) {
+    return cleanedFetched;
+  }
+  if (cleanedExisting && !isWeakFavoriteChannelName(cleanedExisting, url)) {
+    return cleanedExisting;
+  }
+  // إن وُجد اسم من المنصة حتى لو ضعيفاً، يفضَّل على تخمين الرابط
+  if (cleanedFetched) return cleanedFetched;
+  return cleanedExisting || guessChannelNameFromUrl(url);
+}
+
 function loadFavoriteChannels() {
   try {
     const raw = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
@@ -2367,24 +2534,35 @@ function loadFavoriteChannels() {
       favoriteChannels = [];
       return;
     }
+    let dirty = false;
     favoriteChannels = raw
       .filter((c) => c && c.url)
-      .map((c, i) => ({
-        id: String(c.id || `fav_${Date.now()}_${i}`),
-        url: String(c.url),
-        name: String(c.name || guessChannelNameFromUrl(c.url)),
-        lastSeenIds: Array.isArray(c.lastSeenIds) ? c.lastSeenIds.map(String) : [],
-        unread: Array.isArray(c.unread)
-          ? c.unread.map((u) => ({
-              id: String(u.id),
-              title: String(u.title || u.id),
-              url: String(u.url || ''),
-              addedAt: Number(u.addedAt) || Date.now()
-            }))
-          : [],
-        lastChecked: Number(c.lastChecked) || 0,
-        notifyEnabled: c.notifyEnabled !== false
-      }));
+      .map((c, i) => {
+        const url = String(c.url);
+        const rawName = String(c.name || guessChannelNameFromUrl(url));
+        const cleaned = cleanFavoriteChannelName(rawName) || guessChannelNameFromUrl(url);
+        if (cleaned !== rawName) dirty = true;
+        return {
+          id: String(c.id || `fav_${Date.now()}_${i}`),
+          url,
+          name: cleaned,
+          lastSeenIds: Array.isArray(c.lastSeenIds) ? c.lastSeenIds.map(String) : [],
+          unread: Array.isArray(c.unread)
+            ? c.unread.map((u) => ({
+                id: String(u.id),
+                title: String(u.title || u.id),
+                url: String(u.url || ''),
+                addedAt: Number(u.addedAt) || Date.now(),
+                read: u.read === true
+              }))
+            : [],
+          lastChecked: Number(c.lastChecked) || 0,
+          notifyEnabled: c.notifyEnabled !== false
+        };
+      });
+    if (dirty) {
+      try { saveFavoriteChannels(); } catch { /* ignore */ }
+    }
   } catch {
     favoriteChannels = [];
   }
@@ -2394,21 +2572,296 @@ function saveFavoriteChannels() {
   localStorage.setItem(FAVORITES_KEY, JSON.stringify(favoriteChannels));
 }
 
+function getFavoriteNotices(ch) {
+  return Array.isArray(ch?.unread) ? ch.unread : [];
+}
+
+function getFavoriteUnreadCount(ch) {
+  return getFavoriteNotices(ch).filter((v) => !v.read).length;
+}
+
 function getFavoritesTotalUnread() {
-  return favoriteChannels.reduce((sum, c) => sum + (c.unread?.length || 0), 0);
+  return favoriteChannels.reduce((sum, c) => sum + getFavoriteUnreadCount(c), 0);
+}
+
+function getFavoritesPageCount() {
+  return Math.max(1, Math.ceil((favoriteChannels.length || 0) / FAVORITES_PAGE_SIZE));
+}
+
+function clampFavoritesPage() {
+  const totalPages = getFavoritesPageCount();
+  if (favoritesPage >= totalPages) favoritesPage = totalPages - 1;
+  if (favoritesPage < 0) favoritesPage = 0;
+  return totalPages;
+}
+
+function goToFavoriteChannelPage(id) {
+  const index = favoriteChannels.findIndex((c) => c.id === id);
+  if (index < 0) return;
+  favoritesPage = Math.floor(index / FAVORITES_PAGE_SIZE);
+}
+
+function setFavoritesPage(page, { scroll = true } = {}) {
+  favoritesPage = Math.max(0, Number(page) || 0);
+  clampFavoritesPage();
+  renderFavoritesList();
+  if (scroll) {
+    document.getElementById('favoritesList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function getFavoritesVisibleSlice() {
+  const total = favoriteChannels.length;
+  const totalPages = clampFavoritesPage();
+  const start = favoritesPage * FAVORITES_PAGE_SIZE;
+  const end = Math.min(total, start + FAVORITES_PAGE_SIZE);
+  return {
+    start,
+    end,
+    total,
+    totalPages,
+    items: favoriteChannels.slice(start, end)
+  };
+}
+
+function getFavoritesPageNumbers(current, totalPages) {
+  if (totalPages <= 9) {
+    return Array.from({ length: totalPages }, (_, i) => i);
+  }
+  const pages = new Set([0, totalPages - 1, current]);
+  for (let d = 1; d <= 2; d++) {
+    if (current - d >= 0) pages.add(current - d);
+    if (current + d < totalPages) pages.add(current + d);
+  }
+  return [...pages].sort((a, b) => a - b);
+}
+
+function renderFavoritesPagination({ start, end, total, totalPages }, position = 'top') {
+  if (totalPages <= 1) return '';
+  const numbers = getFavoritesPageNumbers(favoritesPage, totalPages);
+  let numbersHtml = '';
+  numbers.forEach((page, i) => {
+    if (i > 0 && page - numbers[i - 1] > 1) {
+      numbersHtml += '<span class="fav-page-ellipsis">…</span>';
+    }
+    numbersHtml += `
+      <button type="button" class="fav-page-num${page === favoritesPage ? ' active' : ''}" data-fav-page="${page}" title="${escapeHtml(tf('favoritesPageLabel', { page: page + 1 }))}">
+        ${page + 1}
+      </button>
+    `;
+  });
+  return `
+    <div class="fav-pagination${position === 'bottom' ? ' fav-pagination-bottom' : ''}">
+      <button type="button" class="fav-page-btn" data-fav-page="${favoritesPage - 1}" ${favoritesPage <= 0 ? 'disabled' : ''} title="${escapeHtml(t('favoritesPagePrev'))}">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+      ${numbersHtml}
+      <button type="button" class="fav-page-btn" data-fav-page="${favoritesPage + 1}" ${favoritesPage >= totalPages - 1 ? 'disabled' : ''} title="${escapeHtml(t('favoritesPageNext'))}">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <label class="fav-page-jump">
+        <span>${escapeHtml(t('favoritesPageJump'))}</span>
+        <input type="number" class="fav-page-jump-input" min="1" max="${totalPages}" value="${favoritesPage + 1}">
+      </label>
+      <span class="fav-page-info">${escapeHtml(tf('favoritesPageInfo', {
+        page: favoritesPage + 1,
+        total: totalPages,
+        start: start + 1,
+        end,
+        count: total
+      }))}</span>
+    </div>
+  `;
+}
+
+function getAllFavoriteNotices() {
+  const items = [];
+  favoriteChannels.forEach((ch) => {
+    getFavoriteNotices(ch).forEach((v) => {
+      items.push({
+        channelId: ch.id,
+        channelName: ch.name,
+        id: v.id,
+        title: v.title,
+        url: v.url,
+        addedAt: Number(v.addedAt) || 0,
+        read: v.read === true
+      });
+    });
+  });
+  items.sort((a, b) => (b.addedAt || 0) - (a.addedAt || 0));
+  return items;
+}
+
+function formatNoticeTime(ts) {
+  const time = Number(ts) || 0;
+  if (!time) return '';
+  const diff = Math.max(0, Date.now() - time);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return t('favoritesJustNow');
+  if (mins < 60) return tf('favoritesMinutesAgo', { count: mins });
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return tf('favoritesHoursAgo', { count: hours });
+  const days = Math.floor(hours / 24);
+  if (days < 7) return tf('favoritesDaysAgo', { count: days });
+  try {
+    const lang = window.i18n?.getLanguage?.() || 'ar';
+    const locale = lang === 'ar' ? 'ar-SA' : lang === 'fr' ? 'fr-FR' : 'en-US';
+    return new Date(time).toLocaleString(locale, {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch {
+    return new Date(time).toLocaleString();
+  }
+}
+
+function updateFavoritesGlobalBell() {
+  const btn = document.getElementById('favoritesGlobalBellBtn');
+  const badge = document.getElementById('favoritesGlobalBellCount');
+  const unread = getFavoritesTotalUnread();
+  const allCount = getAllFavoriteNotices().length;
+  if (btn) {
+    btn.classList.toggle('has-badge', unread > 0);
+    btn.title = unread
+      ? tf('favoritesUnread', { count: unread })
+      : (allCount ? t('favoritesShowNotices') : t('favoritesGlobalBell'));
+  }
+  if (badge) {
+    if (unread > 0) {
+      badge.hidden = false;
+      badge.textContent = unread > 99 ? '99+' : String(unread);
+    } else {
+      badge.hidden = true;
+      badge.textContent = '0';
+    }
+  }
 }
 
 function updateFavoritesNavBadge() {
   const badge = document.getElementById('navFavoritesBadge');
-  if (!badge) return;
   const total = getFavoritesTotalUnread();
-  if (total > 0) {
-    badge.hidden = false;
-    badge.textContent = total > 99 ? '99+' : String(total);
-  } else {
-    badge.hidden = true;
-    badge.textContent = '0';
+  if (badge) {
+    if (total > 0) {
+      badge.hidden = false;
+      badge.textContent = total > 99 ? '99+' : String(total);
+    } else {
+      badge.hidden = true;
+      badge.textContent = '0';
+    }
   }
+  updateFavoritesGlobalBell();
+}
+
+function renderFavoritesGlobalInbox() {
+  const inbox = document.getElementById('favoritesGlobalInbox');
+  updateFavoritesGlobalBell();
+  if (!inbox) return;
+
+  if (!favoritesGlobalInboxOpen) {
+    inbox.classList.add('hidden');
+    inbox.innerHTML = '';
+    return;
+  }
+
+  inbox.classList.remove('hidden');
+  const notices = getAllFavoriteNotices();
+  const unreadCount = notices.filter((v) => !v.read).length;
+
+  if (!notices.length) {
+    inbox.innerHTML = `
+      <div class="fav-global-inbox-card">
+        <div class="fav-unread-head">
+          <span>${escapeHtml(t('favoritesGlobalInboxTitle'))}</span>
+        </div>
+        <p class="fav-global-inbox-empty">${escapeHtml(t('favoritesGlobalInboxEmpty'))}</p>
+      </div>
+    `;
+    return;
+  }
+
+  const items = notices.map((v) => `
+    <div class="fav-unread-item fav-global-item${v.read ? ' is-read' : ''}">
+      <button type="button" class="fav-unread-open fav-global-open" data-id="${escapeHtml(v.channelId)}" data-video-url="${escapeHtml(v.url)}" title="${escapeHtml(t('favoritesOpenVideoBrowser'))}">
+        <i class="fas fa-play-circle"></i>
+        <span class="fav-global-item-text">
+          <strong>${escapeHtml(v.title)}</strong>
+          <small>
+            <em>${escapeHtml(v.channelName)}</em>
+            <time>${escapeHtml(formatNoticeTime(v.addedAt))}</time>
+          </small>
+        </span>
+        ${v.read ? `<em class="fav-notice-read-badge">${escapeHtml(t('favoritesNoticeRead'))}</em>` : ''}
+      </button>
+      <div class="fav-unread-actions">
+        <button type="button" class="fav-unread-download" data-id="${escapeHtml(v.channelId)}" data-video-url="${escapeHtml(v.url)}" title="${escapeHtml(t('favoritesDownloadVideo'))}">
+          <i class="fas fa-download"></i>
+        </button>
+        <button type="button" class="fav-unread-batch" data-id="${escapeHtml(v.channelId)}" data-video-url="${escapeHtml(v.url)}" title="${escapeHtml(t('favoritesBatchVideo'))}">
+          <i class="fas fa-paste"></i>
+        </button>
+        <button type="button" class="fav-unread-delete" data-id="${escapeHtml(v.channelId)}" data-video-id="${escapeHtml(v.id)}" title="${escapeHtml(t('favoritesDeleteNotice'))}">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+      </div>
+    </div>
+  `).join('');
+
+  inbox.innerHTML = `
+    <div class="fav-global-inbox-card">
+      <div class="fav-unread-head">
+        <span>${escapeHtml(t('favoritesGlobalInboxTitle'))} · ${escapeHtml(unreadCount ? tf('favoritesUnread', { count: unreadCount }) : tf('favoritesNoticesRead', { count: notices.length }))}</span>
+        <div class="fav-unread-head-actions">
+          ${unreadCount ? `<button type="button" class="fav-mark-read" id="favoritesGlobalMarkAllRead">${escapeHtml(t('favoritesGlobalMarkAllRead'))}</button>` : ''}
+          <button type="button" class="fav-clear-notices" id="favoritesGlobalClearAll">${escapeHtml(t('favoritesDeleteAllNotices'))}</button>
+        </div>
+      </div>
+      <div class="fav-unread-list">${items}</div>
+    </div>
+  `;
+  bindFavoritesGlobalInboxActions();
+}
+
+function bindFavoritesGlobalInboxActions() {
+  const inbox = document.getElementById('favoritesGlobalInbox');
+  if (!inbox) return;
+  inbox.querySelector('#favoritesGlobalMarkAllRead')?.addEventListener('click', () => markAllFavoritesRead());
+  inbox.querySelector('#favoritesGlobalClearAll')?.addEventListener('click', () => clearAllFavoriteNotices());
+  bindFavoriteNoticeItemActions(inbox);
+}
+
+function toggleFavoritesGlobalInbox() {
+  favoritesGlobalInboxOpen = !favoritesGlobalInboxOpen;
+  renderFavoritesGlobalInbox();
+}
+
+function markAllFavoritesRead() {
+  favoriteChannels.forEach((ch) => {
+    const seen = new Set(ch.lastSeenIds || []);
+    (ch.unread || []).forEach((v) => {
+      v.read = true;
+      seen.add(v.id);
+    });
+    ch.lastSeenIds = Array.from(seen).slice(0, 40);
+  });
+  saveFavoriteChannels();
+  renderFavoritesList();
+  showStatus(t('favoritesMarkedRead'), 'success');
+}
+
+function clearAllFavoriteNotices() {
+  favoriteChannels.forEach((ch) => {
+    const seen = new Set(ch.lastSeenIds || []);
+    (ch.unread || []).forEach((v) => seen.add(v.id));
+    ch.lastSeenIds = Array.from(seen).slice(0, 40);
+    ch.unread = [];
+  });
+  favoritesExpandedId = null;
+  saveFavoriteChannels();
+  renderFavoritesList();
+  showStatus(t('favoritesNoticesCleared'), 'success');
 }
 
 function renderFavoritesList() {
@@ -2416,6 +2869,7 @@ function renderFavoritesList() {
   if (!list) return;
 
   if (favoriteChannels.length === 0) {
+    favoritesPage = 0;
     list.innerHTML = `
       <div class="favorites-empty">
         <i class="fas fa-star"></i>
@@ -2423,21 +2877,37 @@ function renderFavoritesList() {
       </div>
     `;
     updateFavoritesNavBadge();
+    renderFavoritesGlobalInbox();
     return;
   }
 
-  list.innerHTML = favoriteChannels.map((ch, index) => {
-    const unreadCount = ch.unread?.length || 0;
-    const expanded = favoritesExpandedId === ch.id && unreadCount > 0;
+  const { start, end, total, totalPages, items } = getFavoritesVisibleSlice();
+  const cardsHtml = items.map((ch, offset) => {
+    const index = start + offset;
+    const notices = getFavoriteNotices(ch);
+    const unreadCount = getFavoriteUnreadCount(ch);
+    const expanded = favoritesExpandedId === ch.id && notices.length > 0;
     const host = (() => {
       try { return new URL(ch.url).hostname.replace(/^www\./, ''); } catch { return ''; }
     })();
-    const unreadItems = (ch.unread || []).map((v) => `
-      <div class="fav-unread-item">
-        <button type="button" class="fav-unread-open" data-id="${escapeHtml(ch.id)}" data-video-url="${escapeHtml(v.url)}">
+    const unreadItems = notices.map((v) => `
+      <div class="fav-unread-item${v.read ? ' is-read' : ''}">
+        <button type="button" class="fav-unread-open" data-id="${escapeHtml(ch.id)}" data-video-url="${escapeHtml(v.url)}" title="${escapeHtml(t('favoritesOpenVideoBrowser'))}">
           <i class="fas fa-play-circle"></i>
           <span>${escapeHtml(v.title)}</span>
+          ${v.read ? `<em class="fav-notice-read-badge">${escapeHtml(t('favoritesNoticeRead'))}</em>` : ''}
         </button>
+        <div class="fav-unread-actions">
+          <button type="button" class="fav-unread-download" data-id="${escapeHtml(ch.id)}" data-video-url="${escapeHtml(v.url)}" title="${escapeHtml(t('favoritesDownloadVideo'))}">
+            <i class="fas fa-download"></i>
+          </button>
+          <button type="button" class="fav-unread-batch" data-id="${escapeHtml(ch.id)}" data-video-url="${escapeHtml(v.url)}" title="${escapeHtml(t('favoritesBatchVideo'))}">
+            <i class="fas fa-paste"></i>
+          </button>
+          <button type="button" class="fav-unread-delete" data-id="${escapeHtml(ch.id)}" data-video-id="${escapeHtml(v.id)}" title="${escapeHtml(t('favoritesDeleteNotice'))}">
+            <i class="fas fa-trash-alt"></i>
+          </button>
+        </div>
       </div>
     `).join('');
 
@@ -2445,12 +2915,18 @@ function renderFavoritesList() {
       <div class="fav-channel-card${unreadCount ? ' has-unread' : ''}" data-id="${escapeHtml(ch.id)}">
         <div class="fav-channel-main">
           <div class="fav-channel-reorder">
-            <button type="button" class="fav-move-up" data-id="${escapeHtml(ch.id)}" title="${escapeHtml(t('favoritesMoveUp'))}" ${index === 0 ? 'disabled' : ''}>
-              <i class="fas fa-chevron-up"></i>
-            </button>
-            <button type="button" class="fav-move-down" data-id="${escapeHtml(ch.id)}" title="${escapeHtml(t('favoritesMoveDown'))}" ${index === favoriteChannels.length - 1 ? 'disabled' : ''}>
-              <i class="fas fa-chevron-down"></i>
-            </button>
+            <label class="fav-position-wrap" title="${escapeHtml(t('favoritesMoveToPosition'))}">
+              <span class="fav-position-hash">#</span>
+              <input type="number" class="fav-position-input" data-id="${escapeHtml(ch.id)}" value="${index + 1}" min="1" max="${favoriteChannels.length}" title="${escapeHtml(t('favoritesMoveToPosition'))}">
+            </label>
+            <div class="fav-reorder-arrows">
+              <button type="button" class="fav-move-up" data-id="${escapeHtml(ch.id)}" title="${escapeHtml(t('favoritesMoveUp'))}" ${index === 0 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-up"></i>
+              </button>
+              <button type="button" class="fav-move-down" data-id="${escapeHtml(ch.id)}" title="${escapeHtml(t('favoritesMoveDown'))}" ${index === favoriteChannels.length - 1 ? 'disabled' : ''}>
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
           </div>
           <div class="fav-channel-info">
             <button type="button" class="fav-channel-name" data-id="${escapeHtml(ch.id)}" data-url="${escapeHtml(ch.url)}" title="${escapeHtml(ch.url)}">
@@ -2459,7 +2935,7 @@ function renderFavoritesList() {
             <span class="fav-channel-host">${escapeHtml(host)}</span>
           </div>
           <div class="fav-channel-actions">
-            <button type="button" class="fav-bell-btn${unreadCount ? ' has-badge' : ''}" data-id="${escapeHtml(ch.id)}" title="${escapeHtml(unreadCount ? tf('favoritesUnread', { count: unreadCount }) : t('favoritesCheckOne'))}">
+            <button type="button" class="fav-bell-btn${unreadCount ? ' has-badge' : ''}" data-id="${escapeHtml(ch.id)}" title="${escapeHtml(unreadCount ? tf('favoritesUnread', { count: unreadCount }) : (notices.length ? t('favoritesShowNotices') : t('favoritesShowUnread')))}">
               <i class="fas fa-bell"></i>
               ${unreadCount ? `<span class="fav-bell-count">${unreadCount > 99 ? '99+' : unreadCount}</span>` : ''}
             </button>
@@ -2474,8 +2950,11 @@ function renderFavoritesList() {
         ${expanded ? `
           <div class="fav-unread-panel">
             <div class="fav-unread-head">
-              <span>${escapeHtml(tf('favoritesUnread', { count: unreadCount }))}</span>
-              <button type="button" class="fav-mark-read" data-id="${escapeHtml(ch.id)}">${escapeHtml(t('favoritesMarkRead'))}</button>
+              <span>${escapeHtml(unreadCount ? tf('favoritesUnread', { count: unreadCount }) : tf('favoritesNoticesRead', { count: notices.length }))}</span>
+              <div class="fav-unread-head-actions">
+                ${unreadCount ? `<button type="button" class="fav-mark-read" data-id="${escapeHtml(ch.id)}">${escapeHtml(t('favoritesMarkRead'))}</button>` : ''}
+                <button type="button" class="fav-clear-notices" data-id="${escapeHtml(ch.id)}">${escapeHtml(t('favoritesDeleteAllNotices'))}</button>
+              </div>
             </div>
             <div class="fav-unread-list">${unreadItems}</div>
           </div>
@@ -2484,19 +2963,67 @@ function renderFavoritesList() {
     `;
   }).join('');
 
+  list.innerHTML = `
+    ${renderFavoritesPagination({ start, end, total, totalPages }, 'top')}
+    ${cardsHtml}
+    ${renderFavoritesPagination({ start, end, total, totalPages }, 'bottom')}
+  `;
+
   bindFavoritesActions();
   updateFavoritesNavBadge();
+  renderFavoritesGlobalInbox();
 }
 
 function bindFavoritesActions() {
   const list = document.getElementById('favoritesList');
   if (!list) return;
 
+  list.querySelectorAll('[data-fav-page]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      setFavoritesPage(Number(btn.dataset.favPage));
+    });
+  });
+  list.querySelectorAll('.fav-page-jump-input').forEach((input) => {
+    const commit = () => {
+      const page = parseInt(input.value, 10);
+      if (!Number.isFinite(page)) return;
+      setFavoritesPage(page - 1);
+    };
+    input.addEventListener('change', commit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      }
+    });
+    input.addEventListener('click', (e) => e.stopPropagation());
+  });
+
   list.querySelectorAll('.fav-move-up').forEach((btn) => {
     btn.addEventListener('click', () => moveFavoriteChannel(btn.dataset.id, -1));
   });
   list.querySelectorAll('.fav-move-down').forEach((btn) => {
     btn.addEventListener('click', () => moveFavoriteChannel(btn.dataset.id, 1));
+  });
+  list.querySelectorAll('.fav-position-input').forEach((input) => {
+    const commit = () => {
+      const id = input.dataset.id;
+      const max = favoriteChannels.length;
+      let pos = parseInt(input.value, 10);
+      if (!Number.isFinite(pos)) return;
+      if (pos < 1) pos = 1;
+      if (pos > max) pos = max;
+      moveFavoriteChannelToPosition(id, pos);
+    };
+    input.addEventListener('change', commit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commit();
+      }
+    });
+    input.addEventListener('click', (e) => e.stopPropagation());
   });
   list.querySelectorAll('.fav-delete-btn').forEach((btn) => {
     btn.addEventListener('click', () => removeFavoriteChannel(btn.dataset.id));
@@ -2510,31 +3037,118 @@ function bindFavoritesActions() {
   list.querySelectorAll('.fav-mark-read').forEach((btn) => {
     btn.addEventListener('click', () => markFavoriteRead(btn.dataset.id));
   });
+  list.querySelectorAll('.fav-clear-notices').forEach((btn) => {
+    btn.addEventListener('click', () => clearFavoriteNotices(btn.dataset.id));
+  });
   list.querySelectorAll('.fav-channel-name').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       const url = btn.dataset.url;
       if (!url) return;
-      navigateTo('downloader');
-      elements.videoUrl.value = url;
-      elements.videoUrl.focus();
-      showStatus(url, 'info');
+      showStatus(t('favoritesOpeningChannel'), 'info');
+      try {
+        const result = await window.electronAPI.openExternalUrl?.(url);
+        if (result && result.success === false) {
+          showStatus(result.error || t('favoritesOpenChannelError'), 'error');
+        }
+      } catch (err) {
+        showStatus(err?.message || t('favoritesOpenChannelError'), 'error');
+      }
     });
   });
-  list.querySelectorAll('.fav-unread-open').forEach((btn) => {
+  bindFavoriteNoticeItemActions(list);
+}
+
+function bindFavoriteNoticeItemActions(root) {
+  if (!root) return;
+  root.querySelectorAll('.fav-unread-open').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const videoUrl = btn.dataset.videoUrl;
       const channelId = btn.dataset.id;
       if (!videoUrl) return;
       markFavoriteVideoRead(channelId, videoUrl);
-      navigateTo('downloader');
-      elements.videoUrl.value = videoUrl;
+      showStatus(t('favoritesOpeningVideo'), 'info');
       try {
-        await fetchVideoInfo();
+        const result = await window.electronAPI.openExternalUrl?.(videoUrl);
+        if (result && result.success === false) {
+          showStatus(result.error || t('favoritesOpenVideoError'), 'error');
+        }
+      } catch (err) {
+        showStatus(err?.message || t('favoritesOpenVideoError'), 'error');
+      }
+    });
+  });
+  root.querySelectorAll('.fav-unread-download').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const videoUrl = btn.dataset.videoUrl;
+      const channelId = btn.dataset.id;
+      if (!videoUrl) return;
+      markFavoriteVideoRead(channelId, videoUrl);
+      try {
+        await downloadFavoriteVideo(videoUrl);
       } catch {
         /* status already shown */
       }
     });
   });
+  root.querySelectorAll('.fav-unread-batch').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const videoUrl = btn.dataset.videoUrl;
+      const channelId = btn.dataset.id;
+      if (!videoUrl) return;
+      markFavoriteVideoRead(channelId, videoUrl);
+      try {
+        await addFavoriteVideoToBatch(videoUrl);
+      } catch {
+        /* status already shown */
+      }
+    });
+  });
+  root.querySelectorAll('.fav-unread-delete').forEach((btn) => {
+    btn.addEventListener('click', () => deleteFavoriteNotice(btn.dataset.id, btn.dataset.videoId));
+  });
+}
+
+async function downloadFavoriteVideo(videoUrl) {
+  navigateTo('downloader');
+  elements.videoUrl.value = videoUrl;
+  try {
+    await fetchVideoInfo();
+  } catch {
+    return;
+  }
+  if (!currentVideoInfo) return;
+  showStatus(t('favoritesAutoDownloading'), 'info');
+  try {
+    await startDownload();
+  } catch {
+    /* status already shown */
+  }
+}
+
+async function addFavoriteVideoToBatch(videoUrl) {
+  navigateTo('downloader');
+  elements.batchQueuePanel?.classList.remove('hidden');
+  let urlStr = String(videoUrl || '').trim();
+  try {
+    urlStr = normalizeFavoriteUrl(urlStr);
+  } catch {
+    /* keep raw */
+  }
+  try {
+    const added = enqueueBatchUrl(urlStr);
+    if (!added) {
+      showStatus(t('favoritesBatchVideoExists'), 'info');
+      scheduleUpdateQueueUI(true);
+      return;
+    }
+    scheduleUpdateQueueUI(true);
+    showStatus(t('favoritesBatchVideoAdded'), 'success');
+    if (!isQueueProcessing && typeof startBatchProcessing === 'function') {
+      await startBatchProcessing();
+    }
+  } catch (err) {
+    showStatus(err?.message || t('favoritesBatchVideoError'), 'error');
+  }
 }
 
 function moveFavoriteChannel(id, delta) {
@@ -2544,8 +3158,27 @@ function moveFavoriteChannel(id, delta) {
   if (next < 0 || next >= favoriteChannels.length) return;
   const [item] = favoriteChannels.splice(index, 1);
   favoriteChannels.splice(next, 0, item);
+  goToFavoriteChannelPage(id);
   saveFavoriteChannels();
   renderFavoritesList();
+}
+
+function moveFavoriteChannelToPosition(id, position) {
+  const index = favoriteChannels.findIndex((c) => c.id === id);
+  if (index < 0) return;
+  const max = favoriteChannels.length;
+  let target = Math.round(Number(position));
+  if (!Number.isFinite(target)) return;
+  if (target < 1) target = 1;
+  if (target > max) target = max;
+  const targetIdx = target - 1;
+  if (targetIdx === index) return;
+  const [item] = favoriteChannels.splice(index, 1);
+  favoriteChannels.splice(targetIdx, 0, item);
+  goToFavoriteChannelPage(id);
+  saveFavoriteChannels();
+  renderFavoritesList();
+  showStatus(tf('favoritesMovedToPosition', { position: target, name: item.name }), 'success');
 }
 
 function removeFavoriteChannel(id) {
@@ -2559,8 +3192,8 @@ function removeFavoriteChannel(id) {
 function toggleFavoriteUnreadPanel(id) {
   const ch = favoriteChannels.find((c) => c.id === id);
   if (!ch) return;
-  if (!(ch.unread?.length)) {
-    checkFavoriteChannel(id, true);
+  if (!getFavoriteNotices(ch).length) {
+    showStatus(t('favoritesNoNew'), 'info');
     return;
   }
   favoritesExpandedId = favoritesExpandedId === id ? null : id;
@@ -2571,34 +3204,69 @@ function markFavoriteRead(id) {
   const ch = favoriteChannels.find((c) => c.id === id);
   if (!ch) return;
   const seen = new Set(ch.lastSeenIds || []);
+  (ch.unread || []).forEach((v) => {
+    v.read = true;
+    seen.add(v.id);
+  });
+  ch.lastSeenIds = Array.from(seen).slice(0, 40);
+  saveFavoriteChannels();
+  renderFavoritesList();
+  showStatus(t('favoritesMarkedRead'), 'success');
+}
+
+function markFavoriteVideoRead(channelId, videoUrl) {
+  const ch = favoriteChannels.find((c) => c.id === channelId);
+  if (!ch) return;
+  let changed = false;
+  (ch.unread || []).forEach((v) => {
+    if (v.url === videoUrl && !v.read) {
+      v.read = true;
+      changed = true;
+      if (!ch.lastSeenIds.includes(v.id)) ch.lastSeenIds.unshift(v.id);
+    }
+  });
+  if (!changed) return;
+  ch.lastSeenIds = ch.lastSeenIds.slice(0, 40);
+  saveFavoriteChannels();
+  renderFavoritesList();
+}
+
+function deleteFavoriteNotice(channelId, videoId) {
+  const ch = favoriteChannels.find((c) => c.id === channelId);
+  if (!ch) return;
+  const targetId = String(videoId || '');
+  const removed = (ch.unread || []).filter((v) => String(v.id) === targetId);
+  if (!removed.length) return;
+  ch.unread = (ch.unread || []).filter((v) => String(v.id) !== targetId);
+  removed.forEach((v) => {
+    if (!ch.lastSeenIds.includes(v.id)) ch.lastSeenIds.unshift(v.id);
+  });
+  ch.lastSeenIds = ch.lastSeenIds.slice(0, 40);
+  if (!ch.unread.length && favoritesExpandedId === channelId) {
+    favoritesExpandedId = null;
+  }
+  saveFavoriteChannels();
+  renderFavoritesList();
+  showStatus(t('favoritesNoticeDeleted'), 'success');
+}
+
+function clearFavoriteNotices(id) {
+  const ch = favoriteChannels.find((c) => c.id === id);
+  if (!ch) return;
+  const seen = new Set(ch.lastSeenIds || []);
   (ch.unread || []).forEach((v) => seen.add(v.id));
   ch.lastSeenIds = Array.from(seen).slice(0, 40);
   ch.unread = [];
   if (favoritesExpandedId === id) favoritesExpandedId = null;
   saveFavoriteChannels();
   renderFavoritesList();
-}
-
-function markFavoriteVideoRead(channelId, videoUrl) {
-  const ch = favoriteChannels.find((c) => c.id === channelId);
-  if (!ch) return;
-  const removed = (ch.unread || []).filter((v) => v.url === videoUrl);
-  ch.unread = (ch.unread || []).filter((v) => v.url !== videoUrl);
-  removed.forEach((v) => {
-    if (!ch.lastSeenIds.includes(v.id)) ch.lastSeenIds.unshift(v.id);
-  });
-  ch.lastSeenIds = ch.lastSeenIds.slice(0, 40);
-  if (!(ch.unread.length) && favoritesExpandedId === channelId) {
-    favoritesExpandedId = null;
-  }
-  saveFavoriteChannels();
-  renderFavoritesList();
+  showStatus(t('favoritesNoticesCleared'), 'success');
 }
 
 async function addFavoriteChannelsFromText(text) {
   const urls = extractUrlsFromText(text);
   if (!urls.length) {
-    showStatus('الرابط غير صالح', 'error');
+    showStatus(t('invalidUrl'), 'error');
     return;
   }
 
@@ -2630,6 +3298,7 @@ async function addFavoriteChannelsFromText(text) {
   }
 
   favoriteChannels = [...toAdd, ...favoriteChannels];
+  favoritesPage = 0;
   saveFavoriteChannels();
   renderFavoritesList();
 
@@ -2658,8 +3327,11 @@ async function checkFavoriteChannel(id, manual = false, seedOnly = false) {
     }
 
     const entries = result.data?.entries || [];
-    if (result.data?.name && result.data.name !== ch.name) {
-      ch.name = result.data.name;
+    if (result.data?.name) {
+      const preferred = preferFavoriteChannelName(ch.name, result.data.name, ch.url);
+      if (preferred && preferred !== ch.name) {
+        ch.name = preferred;
+      }
     }
     ch.lastChecked = Date.now();
 
@@ -2677,7 +3349,8 @@ async function checkFavoriteChannel(id, manual = false, seedOnly = false) {
             id: entry.id,
             title: entry.title,
             url: entry.url,
-            addedAt: Date.now()
+            addedAt: Date.now(),
+            read: false
           });
         }
       }
@@ -2695,6 +3368,7 @@ async function checkFavoriteChannel(id, manual = false, seedOnly = false) {
           });
         }
         favoritesExpandedId = ch.id;
+        goToFavoriteChannelPage(ch.id);
       } else if (manual) {
         showStatus(t('favoritesNoNew'), 'info');
       }
@@ -2734,6 +3408,7 @@ function bindFavoritesUi() {
   const addBtn = document.getElementById('addFavoriteBtn');
   const pasteBtn = document.getElementById('pasteFavoriteBtn');
   const checkAllBtn = document.getElementById('checkAllFavoritesBtn');
+  const globalBellBtn = document.getElementById('favoritesGlobalBellBtn');
   const input = document.getElementById('favoriteChannelInput');
 
   if (addBtn && !addBtn.dataset.bound) {
@@ -2763,6 +3438,11 @@ function bindFavoritesUi() {
     checkAllBtn.addEventListener('click', () => checkAllFavoriteChannels(true));
   }
 
+  if (globalBellBtn && !globalBellBtn.dataset.bound) {
+    globalBellBtn.dataset.bound = 'true';
+    globalBellBtn.addEventListener('click', () => toggleFavoritesGlobalInbox());
+  }
+
   if (input && !input.dataset.bound) {
     input.dataset.bound = 'true';
     input.addEventListener('keydown', (e) => {
@@ -2788,6 +3468,24 @@ function initFavorites() {
   bindFavoritesUi();
   renderFavoritesList();
   startFavoritesAutoCheck();
+
+  const MIGRATE_KEY = 'vm_fav_channel_names_v3';
+  const forceAll = !localStorage.getItem(MIGRATE_KEY);
+  const needsNameRefresh = forceAll
+    ? [...favoriteChannels]
+    : favoriteChannels.filter((c) => (
+      isWeakFavoriteChannelName(c.name, c.url) || isUrlDerivedChannelName(c.name, c.url)
+    ));
+  if (needsNameRefresh.length) {
+    setTimeout(() => {
+      needsNameRefresh.forEach((ch) => {
+        checkFavoriteChannel(ch.id, false, false).catch(() => { /* silent */ });
+      });
+      if (forceAll) localStorage.setItem(MIGRATE_KEY, '1');
+    }, 2500);
+  } else if (forceAll) {
+    localStorage.setItem(MIGRATE_KEY, '1');
+  }
 }
 
 function bindHistoryActions() {
@@ -2812,6 +3510,379 @@ function bindHistoryActions() {
       updateHistoryUI();
     });
   });
+}
+
+// —— Watch Later ——
+const WATCH_LATER_KEY = 'vmWatchLaterLinks';
+const WATCH_LATER_CATEGORIES = [
+  { id: 'music', icon: 'fas fa-music', i18n: 'watchLaterCatMusic', css: 'wl-cat-music' },
+  { id: 'games', icon: 'fas fa-gamepad', i18n: 'watchLaterCatGames', css: 'wl-cat-games' },
+  { id: 'sports', icon: 'fas fa-futbol', i18n: 'watchLaterCatSports', css: 'wl-cat-sports' },
+  { id: 'business', icon: 'fas fa-briefcase', i18n: 'watchLaterCatBusiness', css: 'wl-cat-business' },
+  { id: 'useful', icon: 'fas fa-lightbulb', i18n: 'watchLaterCatUseful', css: 'wl-cat-useful' },
+  { id: 'funny', icon: 'fas fa-face-laugh', i18n: 'watchLaterCatFunny', css: 'wl-cat-funny' },
+  { id: 'movies', icon: 'fas fa-film', i18n: 'watchLaterCatMovies', css: 'wl-cat-movies' },
+  { id: 'podcast', icon: 'fas fa-podcast', i18n: 'watchLaterCatPodcast', css: 'wl-cat-podcast' },
+  { id: 'stories', icon: 'fas fa-book-open', i18n: 'watchLaterCatStories', css: 'wl-cat-stories' },
+  { id: 'books', icon: 'fas fa-book', i18n: 'watchLaterCatBooks', css: 'wl-cat-books' },
+  { id: 'other', icon: 'fas fa-ellipsis', i18n: 'watchLaterCatOther', css: 'wl-cat-other' }
+];
+
+let watchLaterItems = [];
+let watchLaterFilter = 'all';
+
+function getWatchLaterCategory(id) {
+  return WATCH_LATER_CATEGORIES.find((c) => c.id === id) || WATCH_LATER_CATEGORIES[WATCH_LATER_CATEGORIES.length - 1];
+}
+
+function detectWatchLaterPlatform(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./i, '').toLowerCase();
+    if (host.includes('youtube') || host === 'youtu.be') return 'YouTube';
+    if (host.includes('tiktok')) return 'TikTok';
+    if (host.includes('instagram')) return 'Instagram';
+    if (host.includes('facebook') || host === 'fb.watch') return 'Facebook';
+    if (host.includes('twitter') || host === 'x.com') return 'X';
+    if (host.includes('twitch')) return 'Twitch';
+    if (host.includes('kick.com')) return 'Kick';
+    if (host.includes('vimeo')) return 'Vimeo';
+    if (host.includes('dailymotion')) return 'Dailymotion';
+    if (host.includes('soundcloud')) return 'SoundCloud';
+    if (host.includes('spotify')) return 'Spotify';
+    if (host.includes('reddit')) return 'Reddit';
+    if (host.includes('rumble')) return 'Rumble';
+    return host.split('.')[0] || t('linkLabel');
+  } catch {
+    return t('linkLabel');
+  }
+}
+
+function guessWatchLaterTitle(url) {
+  try {
+    const u = new URL(url);
+    const m = u.pathname.match(/\/(?:watch\?v=|shorts\/|video\/|@)?([^/?#]+)/);
+    if (m?.[1] && m[1] !== 'watch') return decodeURIComponent(m[1]).replace(/[-_]+/g, ' ');
+    return detectWatchLaterPlatform(url);
+  } catch {
+    return url;
+  }
+}
+
+function loadWatchLaterItems() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(WATCH_LATER_KEY) || '[]');
+    if (!Array.isArray(raw)) {
+      watchLaterItems = [];
+      return;
+    }
+    watchLaterItems = raw
+      .filter((item) => item && item.url)
+      .map((item, i) => ({
+        id: String(item.id || `wl_${Date.now()}_${i}`),
+        url: String(item.url),
+        title: String(item.title || guessWatchLaterTitle(item.url)),
+        category: getWatchLaterCategory(item.category).id,
+        platform: String(item.platform || detectWatchLaterPlatform(item.url)),
+        channelUrl: String(item.channelUrl || ''),
+        channelName: String(item.channelName || ''),
+        addedAt: Number(item.addedAt) || Date.now()
+      }));
+  } catch {
+    watchLaterItems = [];
+  }
+}
+
+function saveWatchLaterItems() {
+  localStorage.setItem(WATCH_LATER_KEY, JSON.stringify(watchLaterItems));
+  updateWatchLaterNavBadge();
+}
+
+function updateWatchLaterNavBadge() {
+  const badge = document.getElementById('navWatchLaterBadge');
+  if (!badge) return;
+  const total = watchLaterItems.length;
+  if (total > 0) {
+    badge.hidden = false;
+    badge.textContent = total > 999 ? '999+' : String(total);
+  } else {
+    badge.hidden = true;
+    badge.textContent = '0';
+  }
+}
+
+function fillWatchLaterCategorySelect() {
+  const select = document.getElementById('watchLaterCategorySelect');
+  if (!select) return;
+  const current = select.value || 'other';
+  select.innerHTML = WATCH_LATER_CATEGORIES.map((cat) => (
+    `<option value="${cat.id}">${escapeHtml(t(cat.i18n))}</option>`
+  )).join('');
+  select.value = WATCH_LATER_CATEGORIES.some((c) => c.id === current) ? current : 'other';
+}
+
+function renderWatchLaterFilters() {
+  const wrap = document.getElementById('watchLaterFilters');
+  if (!wrap) return;
+  const buttons = [
+    `<button type="button" class="wl-filter-btn${watchLaterFilter === 'all' ? ' active' : ''}" data-filter="all" title="${escapeHtml(t('watchLaterFilterAll'))}">
+      <i class="fas fa-border-all"></i>
+      <span class="wl-filter-tip">${escapeHtml(t('watchLaterFilterAll'))}</span>
+    </button>`
+  ];
+  WATCH_LATER_CATEGORIES.forEach((cat) => {
+    buttons.push(`
+      <button type="button" class="wl-filter-btn${watchLaterFilter === cat.id ? ' active' : ''}" data-filter="${cat.id}" title="${escapeHtml(t(cat.i18n))}">
+        <i class="${cat.icon}"></i>
+        <span class="wl-filter-tip">${escapeHtml(t(cat.i18n))}</span>
+      </button>
+    `);
+  });
+  wrap.innerHTML = buttons.join('');
+  wrap.querySelectorAll('.wl-filter-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      watchLaterFilter = btn.dataset.filter || 'all';
+      renderWatchLaterFilters();
+      renderWatchLaterList();
+    });
+  });
+}
+
+function renderWatchLaterList() {
+  const list = document.getElementById('watchLaterList');
+  if (!list) return;
+  fillWatchLaterCategorySelect();
+  updateWatchLaterNavBadge();
+
+  const filtered = watchLaterFilter === 'all'
+    ? watchLaterItems
+    : watchLaterItems.filter((item) => item.category === watchLaterFilter);
+
+  if (!filtered.length) {
+    list.innerHTML = `
+      <div class="watchlater-empty">
+        <i class="fas fa-clock"></i>
+        <p>${escapeHtml(t('watchLaterEmpty'))}</p>
+      </div>
+    `;
+    return;
+  }
+
+  const maxPos = Math.max(watchLaterItems.length, 1);
+  list.innerHTML = filtered.map((item) => {
+    const index = watchLaterItems.findIndex((x) => x.id === item.id);
+    const position = index + 1;
+    const cat = getWatchLaterCategory(item.category);
+    const channelLabel = item.channelName || (item.channelUrl ? guessChannelNameFromUrl(item.channelUrl) : '');
+    return `
+      <div class="wl-item-card" data-id="${escapeHtml(item.id)}">
+        <div class="wl-item-cat ${cat.css}" title="${escapeHtml(t(cat.i18n))}">
+          <i class="${cat.icon}"></i>
+        </div>
+        <label class="wl-position-wrap" title="${escapeHtml(t('watchLaterMoveTo'))}">
+          <span class="fav-position-hash">#</span>
+          <input type="number" class="wl-position-input" data-id="${escapeHtml(item.id)}" value="${position}" min="1" max="${maxPos}" step="1" inputmode="numeric">
+        </label>
+        <div class="wl-item-info">
+          <button type="button" class="wl-item-title" data-url="${escapeHtml(item.url)}" title="${escapeHtml(item.url)}">
+            ${escapeHtml(item.title)}
+          </button>
+          <div class="wl-item-meta">
+            <span><i class="${cat.icon}"></i> ${escapeHtml(t(cat.i18n))}</span>
+            <span>· ${escapeHtml(item.platform)}</span>
+            ${item.channelUrl ? `
+              <button type="button" class="wl-item-channel" data-channel-url="${escapeHtml(item.channelUrl)}" title="${escapeHtml(t('watchLaterOpenChannel'))}">
+                <i class="fas fa-tv"></i> ${escapeHtml(channelLabel || t('watchLaterOpenChannel'))}
+              </button>
+            ` : ''}
+          </div>
+        </div>
+        <div class="wl-item-actions">
+          <button type="button" class="wl-copy-btn" data-url="${escapeHtml(item.url)}" title="${escapeHtml(t('watchLaterCopy'))}">
+            <i class="fas fa-copy"></i>
+          </button>
+          <button type="button" class="wl-open-btn" data-url="${escapeHtml(item.url)}" title="${escapeHtml(t('watchLaterOpening'))}">
+            <i class="fas fa-external-link-alt"></i>
+          </button>
+          <button type="button" class="wl-delete-btn" data-id="${escapeHtml(item.id)}" title="${escapeHtml(t('watchLaterDelete'))}">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  bindWatchLaterListActions();
+}
+
+function bindWatchLaterListActions() {
+  const list = document.getElementById('watchLaterList');
+  if (!list) return;
+
+  const openUrl = async (url) => {
+    if (!url) return;
+    try {
+      const result = await window.electronAPI.openExternalUrl?.(url);
+      if (result?.success === false) {
+        showStatus(result.error || t('watchLaterOpenError'), 'error');
+        return;
+      }
+      showStatus(t('watchLaterOpening'), 'info');
+    } catch (err) {
+      showStatus(err?.message || t('watchLaterOpenError'), 'error');
+    }
+  };
+
+  list.querySelectorAll('.wl-item-title, .wl-open-btn').forEach((btn) => {
+    btn.addEventListener('click', () => openUrl(btn.dataset.url));
+  });
+  list.querySelectorAll('.wl-item-channel').forEach((btn) => {
+    btn.addEventListener('click', () => openUrl(btn.dataset.channelUrl));
+  });
+  list.querySelectorAll('.wl-copy-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const url = btn.dataset.url;
+      if (!url) return;
+      try {
+        await navigator.clipboard.writeText(url);
+        showStatus(t('watchLaterCopied'), 'success');
+      } catch {
+        showStatus(t('watchLaterCopyFailed'), 'error');
+      }
+    });
+  });
+  list.querySelectorAll('.wl-delete-btn').forEach((btn) => {
+    btn.addEventListener('click', () => removeWatchLaterItem(btn.dataset.id));
+  });
+  list.querySelectorAll('.wl-position-input').forEach((input) => {
+    const apply = () => {
+      const id = input.dataset.id;
+      const currentIndex = watchLaterItems.findIndex((x) => x.id === id);
+      if (currentIndex < 0) return;
+      const maxPos = Math.max(watchLaterItems.length, 1);
+      let target = Number.parseInt(input.value, 10);
+      if (!Number.isFinite(target)) {
+        input.value = String(currentIndex + 1);
+        return;
+      }
+      target = Math.min(Math.max(Math.round(target), 1), maxPos);
+      input.value = String(target);
+      if (target === currentIndex + 1) return;
+      moveWatchLaterToPosition(id, target);
+    };
+    input.addEventListener('change', apply);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        input.blur();
+      }
+    });
+  });
+}
+
+function moveWatchLaterToPosition(id, position) {
+  const fromIndex = watchLaterItems.findIndex((x) => x.id === id);
+  if (fromIndex < 0) return;
+  const maxPos = Math.max(watchLaterItems.length, 1);
+  const toIndex = Math.min(Math.max(Math.round(Number(position) || 1), 1), maxPos) - 1;
+  if (toIndex === fromIndex) return;
+  const [item] = watchLaterItems.splice(fromIndex, 1);
+  watchLaterItems.splice(toIndex, 0, item);
+  saveWatchLaterItems();
+  renderWatchLaterList();
+  showStatus(tf('watchLaterMovedTo', { position: toIndex + 1 }), 'success');
+}
+
+function removeWatchLaterItem(id) {
+  watchLaterItems = watchLaterItems.filter((x) => x.id !== id);
+  saveWatchLaterItems();
+  renderWatchLaterList();
+  showStatus(t('watchLaterRemoved'), 'success');
+}
+
+async function addWatchLaterFromInputs() {
+  const urlInput = document.getElementById('watchLaterUrlInput');
+  const titleInput = document.getElementById('watchLaterTitleInput');
+  const channelInput = document.getElementById('watchLaterChannelInput');
+  const categorySelect = document.getElementById('watchLaterCategorySelect');
+  const rawUrl = (urlInput?.value || '').trim();
+  if (!rawUrl) {
+    showStatus(t('invalidUrl'), 'error');
+    return;
+  }
+
+  let url;
+  try {
+    url = normalizeFavoriteUrl(rawUrl);
+  } catch {
+    showStatus(t('invalidUrl'), 'error');
+    return;
+  }
+
+  if (watchLaterItems.some((x) => favoriteUrlKey(x.url) === favoriteUrlKey(url))) {
+    showStatus(t('watchLaterExists'), 'info');
+    return;
+  }
+
+  let channelUrl = '';
+  let channelName = '';
+  const rawChannel = (channelInput?.value || '').trim();
+  if (rawChannel) {
+    try {
+      channelUrl = normalizeFavoriteUrl(rawChannel);
+      channelName = guessChannelNameFromUrl(channelUrl);
+    } catch {
+      channelUrl = '';
+    }
+  }
+
+  const category = getWatchLaterCategory(categorySelect?.value || 'other').id;
+  const title = (titleInput?.value || '').trim() || guessWatchLaterTitle(url);
+  watchLaterItems.unshift({
+    id: `wl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    url,
+    title,
+    category,
+    platform: detectWatchLaterPlatform(url),
+    channelUrl,
+    channelName,
+    addedAt: Date.now()
+  });
+  saveWatchLaterItems();
+  if (urlInput) urlInput.value = '';
+  if (titleInput) titleInput.value = '';
+  if (channelInput) channelInput.value = '';
+  renderWatchLaterFilters();
+  renderWatchLaterList();
+  showStatus(t('watchLaterAdded'), 'success');
+}
+
+function bindWatchLaterUi() {
+  document.getElementById('addWatchLaterBtn')?.addEventListener('click', () => {
+    addWatchLaterFromInputs();
+  });
+  document.getElementById('pasteWatchLaterBtn')?.addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const urlInput = document.getElementById('watchLaterUrlInput');
+      if (urlInput && text.trim()) urlInput.value = text.trim();
+    } catch {
+      showStatus(t('errClipboard') || t('invalidUrl'), 'error');
+    }
+  });
+  document.getElementById('watchLaterUrlInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addWatchLaterFromInputs();
+    }
+  });
+}
+
+function initWatchLater() {
+  loadWatchLaterItems();
+  bindWatchLaterUi();
+  fillWatchLaterCategorySelect();
+  renderWatchLaterFilters();
+  renderWatchLaterList();
 }
 
 // Navigation
@@ -2842,12 +3913,18 @@ function navigateTo(section) {
     history: t('pageHistory'),
     platforms: t('pagePlatforms'),
     favorites: t('pageFavorites'),
+    watchlater: t('pageWatchLater'),
     tools: t('pageTools'),
     settings: t('pageSettings')
   };
   elements.pageTitle.textContent = titles[section] || 'VM';
   if (section === 'settings') initEnhancedSettings();
   if (section === 'favorites') renderFavoritesList();
+  if (section === 'watchlater') {
+    fillWatchLaterCategorySelect();
+    renderWatchLaterFilters();
+    renderWatchLaterList();
+  }
 }
 
 function initEnhancedSettings() {
@@ -2873,12 +3950,12 @@ function initEnhancedSettings() {
       }
 
       if (delayMs <= 0) {
-        alert('الرجاء تحديد وقت بدء أو تحديد الدقائق المتبقية');
+        alert(t('schedulerNeedTime'));
         return;
       }
 
       const startInMin = Math.round(delayMs / 60000);
-      if (scheduleStatus) scheduleStatus.textContent = `تم تفعيل الجدولة بنجاح: سيبدأ التحميل التلقائي بعد ${startInMin} دقيقة تلقائياً ✓`;
+      if (scheduleStatus) scheduleStatus.textContent = tf('schedulerActivated', { minutes: startInMin });
       setTimeout(() => {
         if (typeof startBatchProcessing === 'function') startBatchProcessing();
       }, delayMs);
@@ -2892,10 +3969,10 @@ async function loadPlatforms() {
   const platforms = await window.electronAPI.getSupportedPlatforms();
 
   elements.platformsGrid.innerHTML = platforms.map((p) => `
-    <button type="button" class="platform-card" data-platform-url="${escapeHtml(p.url || '')}" title="فتح الموقع الرسمي لـ ${escapeHtml(p.name)}">
+    <button type="button" class="platform-card" data-platform-url="${escapeHtml(p.url || '')}" title="${escapeHtml(tf('openingSite', { name: p.name }))}">
       <i class="${getPlatformIconClass(p.name)}"></i>
       <h4>${escapeHtml(p.name)}</h4>
-      <span class="platform-card-hint">${isLivePlatform(p.name) ? 'لايف / VOD · الموقع الرسمي' : 'الموقع الرسمي'}</span>
+      <span class="platform-card-hint">${escapeHtml(isLivePlatform(p.name) ? t('officialSiteLive') : t('officialSite'))}</span>
     </button>
   `).join('');
 
@@ -2906,18 +3983,18 @@ async function loadPlatforms() {
 
 async function openOfficialPlatformSite(url, name = '') {
   if (!url) {
-    showStatus('لا يوجد رابط رسمي لهذه المنصة', 'info');
+    showStatus(t('noOfficialUrl'), 'info');
     return;
   }
   try {
     const result = await window.electronAPI.openExternalUrl?.(url);
     if (result?.success === false) {
-      showStatus(result.error || 'تعذر فتح الموقع الرسمي', 'error');
+      showStatus(result.error || t('openOfficialFailed'), 'error');
       return;
     }
-    if (name) showStatus(`جاري فتح ${name}...`, 'info');
+    if (name) showStatus(tf('openingSite', { name }), 'info');
   } catch (err) {
-    showStatus(err?.message || 'تعذر فتح الموقع الرسمي', 'error');
+    showStatus(err?.message || t('openOfficialFailed'), 'error');
   }
 }
 
@@ -3005,9 +4082,10 @@ function formatPreviewQualityLabel(height) {
   const n = Number(height);
   if (Number.isFinite(n) && n > 0) {
     if (n >= 4320) return `${n}p · 8K`;
-    if (n >= 2160) return `${n}p · 4K`;
-    if (n >= 1440) return `${n}p · 2K`;
+    if (n >= 2160) return `${n}p · 4K UHD`;
+    if (n >= 1440) return `${n}p · 2K QHD`;
     if (n >= 1080) return `${n}p · Full HD`;
+    if (n >= 720) return `${n}p · HD`;
     return `${n}p`;
   }
   if (typeof height === 'string' && /^\d+$/.test(height)) return `${height}p`;
@@ -3287,7 +4365,7 @@ window.moveBatchItem = function(itemId, direction, event) {
   if (newIdx < 0 || newIdx >= downloadQueue.length) return;
   const item = downloadQueue[idx];
   if (item.status === 'downloading' || downloadQueue[newIdx].status === 'downloading') {
-    showStatus('لا يمكن نقل رابط قيد التحميل حالياً', 'info');
+    showStatus(t('batchCannotMoveDownloading'), 'info');
     return;
   }
   downloadQueue[idx] = downloadQueue[newIdx];
@@ -3301,7 +4379,7 @@ window.moveBatchItemToFirst = function(itemId, event) {
   if (idx < 0) return;
   const item = downloadQueue[idx];
   if (item.status !== 'pending') {
-    showStatus('يمكن تقديم رابط بانتظار التحميل فقط', 'info');
+    showStatus(t('batchOnlyPendingFirst'), 'info');
     return;
   }
   downloadQueue.splice(idx, 1);
@@ -3309,14 +4387,14 @@ window.moveBatchItemToFirst = function(itemId, event) {
   if (insertAt < 0) downloadQueue.push(item);
   else downloadQueue.splice(insertAt, 0, item);
   updateQueueUI();
-  showStatus('① سيتم تحميل هذا الرابط أولاً', 'success');
+  showStatus(t('batchMovedFirst'), 'success');
 };
 
 window.moveSelectedBatchToFirst = function(event) {
   if (event) event.stopPropagation();
   const selected = getSelectedBatchItems().filter((q) => q.status === 'pending');
   if (selected.length === 0) {
-    showStatus('حدّد روابط بانتظار التحميل لتقديمها', 'info');
+    showStatus(t('batchSelectPendingFirst'), 'info');
     return;
   }
   // أبقِ ترتيب المحدد كما هو، وضعه في مقدمة قائمة الانتظار
@@ -3333,7 +4411,7 @@ window.moveSelectedBatchToFirst = function(event) {
     ];
   }
   updateQueueUI();
-  showStatus(`① تم تقديم ${selected.length} رابط للتحميل أولاً`, 'success');
+  showStatus(tf('batchMovedSelectedFirst', { count: selected.length }), 'success');
 };
 
 window.deleteSelectedBatchItems = function(event) {
@@ -3345,13 +4423,13 @@ window.deleteSelectedBatchItems = function(event) {
   syncQueueUrlSet();
   syncBatchSelection();
   scheduleUpdateQueueUI(true);
-  showStatus(removed > 0 ? `تم حذف ${removed} رابط من القائمة` : 'لا يمكن حذف رابط قيد التحميل', 'info');
+  showStatus(removed > 0 ? tf('batchDeletedCount', { count: removed }) : t('batchCannotDeleteDownloading'), 'info');
 };
 
 window.toggleBulkEditor = function(event) {
   if (event) event.stopPropagation();
   if (batchSelectedIds.size === 0) {
-    showStatus('حدّد رابطاً واحداً أو أكثر للتعديل', 'info');
+    showStatus(t('batchSelectToEdit'), 'info');
     return;
   }
   showBulkEditor = !showBulkEditor;
@@ -3383,7 +4461,7 @@ window.saveBulkBatchEditor = function(event) {
 
   showBulkEditor = false;
   updateQueueUI();
-  showStatus(`تم تطبيق الإعدادات على ${selected.length} رابط`, 'success');
+  showStatus(tf('batchAppliedSettings', { count: selected.length }), 'success');
 };
 
 window.toggleBatchItemEditor = function(itemId, event) {
@@ -3402,7 +4480,7 @@ window.removeBatchQueueItem = function(itemId, event) {
   if (event) event.stopPropagation();
   const item = downloadQueue.find((q) => q.id === itemId);
   if (item?.status === 'downloading') {
-    showStatus('لا يمكن حذف رابط قيد التحميل', 'info');
+    showStatus(t('batchCannotDeleteDownloading'), 'info');
     return;
   }
   if (item) downloadQueueUrlSet.delete(item.url);
@@ -3410,7 +4488,7 @@ window.removeBatchQueueItem = function(itemId, event) {
   batchSelectedIds.delete(itemId);
   syncBatchSelection();
   scheduleUpdateQueueUI(true);
-  showStatus('تم حذف الرابط من القائمة', 'info');
+  showStatus(t('batchItemDeleted'), 'info');
 };
 
 window.saveBatchItemEditor = function(itemId, event) {
@@ -3429,7 +4507,7 @@ window.saveBatchItemEditor = function(itemId, event) {
       const normalized = new URL(nextUrl.startsWith('http') ? nextUrl : `https://${nextUrl}`).toString();
       if (normalized !== item.url) {
         if (downloadQueueUrlSet.has(normalized) && normalized !== item.url) {
-          showStatus('هذا الرابط موجود مسبقاً في القائمة', 'info');
+          showStatus(t('batchUrlExists'), 'info');
         } else {
           downloadQueueUrlSet.delete(item.url);
           downloadQueueUrlSet.add(normalized);
@@ -3437,7 +4515,7 @@ window.saveBatchItemEditor = function(itemId, event) {
         }
       }
     } catch {
-      showStatus('الرابط غير صالح', 'error');
+      showStatus(t('invalidUrl'), 'error');
       return;
     }
   }
@@ -3457,7 +4535,7 @@ window.saveBatchItemEditor = function(itemId, event) {
 
   item.showEditor = false;
   scheduleUpdateQueueUI(true);
-  showStatus('تم حفظ إعدادات الرابط بنجاح', 'success');
+  showStatus(t('batchItemSaved'), 'success');
 };
 
 function renderBulkEditorHtml() {
@@ -3466,33 +4544,33 @@ function renderBulkEditorHtml() {
   return `
     <div class="batch-bulk-editor" onclick="event.stopPropagation()">
       <div class="batch-bulk-editor-header">
-        <strong><i class="fas fa-sliders-h"></i> تعديل إعدادات ${count} رابط محدد</strong>
-        <button type="button" class="btn-batch-icon" onclick="toggleBulkEditor(event)" title="إغلاق"><i class="fas fa-times"></i></button>
+        <strong><i class="fas fa-sliders-h"></i> ${escapeHtml(tf('bulkEditTitle', { count }))}</strong>
+        <button type="button" class="btn-batch-icon" onclick="toggleBulkEditor(event)" title="${escapeHtml(t('batchClose'))}"><i class="fas fa-times"></i></button>
       </div>
-      <p class="batch-bulk-hint">طبّق الجودة / النوع على المحدد — يمكنك اختيار ما يُطبَّق فقط</p>
+      <p class="batch-bulk-hint">${escapeHtml(t('bulkEditHint'))}</p>
       <div class="batch-bulk-grid">
         <label class="batch-bulk-field">
-          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_quality" checked> الجودة</span>
+          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_quality" checked> ${escapeHtml(t('bulkQuality'))}</span>
           <select id="bulk_edit_quality">
             ${renderBatchQualityOptions('best', 'bulk')}
           </select>
         </label>
         <label class="batch-bulk-field">
-          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_type" checked> نوع التحميل</span>
+          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_type" checked> ${escapeHtml(t('bulkDownloadType'))}</span>
           <select id="bulk_edit_type">
-            <option value="video-audio">فيديو + صوت</option>
-            <option value="video-only">فيديو فقط</option>
-            <option value="audio">صوت MP3</option>
+            <option value="video-audio">${escapeHtml(t('typeVideoAudio'))}</option>
+            <option value="video-only">${escapeHtml(t('typeVideoOnly'))}</option>
+            <option value="audio">${escapeHtml(t('typeAudioMp3'))}</option>
           </select>
         </label>
         <label class="batch-bulk-field batch-bulk-field-wide">
-          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_filename"> اسم ملف موحّد (اختياري)</span>
-          <input type="text" id="bulk_edit_filename" placeholder="يُطبَّق على الكل إن تم التفعيل...">
+          <span class="batch-bulk-check"><input type="checkbox" id="bulk_apply_filename"> ${escapeHtml(t('bulkUnifiedFilename'))}</span>
+          <input type="text" id="bulk_edit_filename" placeholder="${escapeHtml(t('bulkFilenamePlaceholder'))}">
         </label>
       </div>
       <div class="batch-bulk-actions">
         <button type="button" class="btn-batch-apply-bulk" onclick="saveBulkBatchEditor(event)">
-          <i class="fas fa-check"></i> تطبيق على المحدد (${count})
+          <i class="fas fa-check"></i> ${escapeHtml(tf('bulkApplySelected', { count }))}
         </button>
       </div>
     </div>
@@ -3536,28 +4614,28 @@ function updateQueueUI() {
   const headerHtml = `
     <div class="batch-queue-summary">
       <span>
-        القائمة: <strong>${total}</strong>
-        (انتظار: ${pendingCount} | مكتمل بالجلسة: ${sessionDone} | فشل: ${sessionError})
+        ${escapeHtml(t('batchQueueList'))}: <strong>${total}</strong>
+        (${escapeHtml(t('batchQueueWaiting'))}: ${pendingCount} | ${escapeHtml(t('batchQueueSessionDone'))}: ${sessionDone} | ${escapeHtml(t('batchQueueFailed'))}: ${sessionError})
       </span>
-      <span class="batch-queue-hint">بدون حد أقصى — أكثر من 1000 فيديو في نفس الجلسة</span>
+      <span class="batch-queue-hint">${escapeHtml(t('batchQueueHint'))}</span>
     </div>
     <div class="batch-selection-toolbar">
       <label class="batch-select-all">
-        <input type="checkbox" ${allSelected ? 'checked' : ''} onchange="toggleSelectAllBatch(event)" title="تحديد الكل">
-        <span>${allSelected ? 'إلغاء الكل' : 'تحديد الكل'}</span>
+        <input type="checkbox" ${allSelected ? 'checked' : ''} onchange="toggleSelectAllBatch(event)" title="${escapeHtml(t('batchSelectAll'))}">
+        <span>${allSelected ? escapeHtml(t('batchDeselectAll')) : escapeHtml(t('batchSelectAll'))}</span>
       </label>
-      <span class="batch-selected-count">${selectedCount > 0 ? `محدد: ${selectedCount}` : 'لا تحديد'}</span>
+      <span class="batch-selected-count">${selectedCount > 0 ? escapeHtml(tf('batchSelected', { count: selectedCount })) : escapeHtml(t('batchNoSelection'))}</span>
       <div class="batch-toolbar-actions">
-        <button type="button" class="btn-batch-tool" onclick="moveSelectedBatchToFirst(event)" ${selectedCount === 0 ? 'disabled' : ''} title="تحميل المحدد أولاً">
-          <i class="fas fa-angle-double-up"></i> تحميل أولاً
+        <button type="button" class="btn-batch-tool" onclick="moveSelectedBatchToFirst(event)" ${selectedCount === 0 ? 'disabled' : ''} title="${escapeHtml(t('batchDownloadFirst'))}">
+          <i class="fas fa-angle-double-up"></i> ${escapeHtml(t('batchDownloadFirst'))}
         </button>
-        <button type="button" class="btn-batch-tool btn-batch-tool-edit" onclick="toggleBulkEditor(event)" ${selectedCount === 0 ? 'disabled' : ''} title="تعديل إعدادات المحدد">
-          <i class="fas fa-sliders-h"></i> تعديل المحدد
+        <button type="button" class="btn-batch-tool btn-batch-tool-edit" onclick="toggleBulkEditor(event)" ${selectedCount === 0 ? 'disabled' : ''} title="${escapeHtml(t('batchEditSelected'))}">
+          <i class="fas fa-sliders-h"></i> ${escapeHtml(t('batchEditSelected'))}
         </button>
-        <button type="button" class="btn-batch-tool btn-batch-tool-danger" onclick="deleteSelectedBatchItems(event)" ${selectedCount === 0 ? 'disabled' : ''} title="حذف المحدد">
+        <button type="button" class="btn-batch-tool btn-batch-tool-danger" onclick="deleteSelectedBatchItems(event)" ${selectedCount === 0 ? 'disabled' : ''} title="${escapeHtml(t('batchDeleteSelected'))}">
           <i class="fas fa-trash-alt"></i>
         </button>
-        <button type="button" class="btn-batch-tool" onclick="clearBatchSelection(event)" ${selectedCount === 0 ? 'disabled' : ''} title="إلغاء التحديد">
+        <button type="button" class="btn-batch-tool" onclick="clearBatchSelection(event)" ${selectedCount === 0 ? 'disabled' : ''} title="${escapeHtml(t('batchClearSelection'))}">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -3567,7 +4645,7 @@ function updateQueueUI() {
         <button type="button" class="btn-batch-page" onclick="setBatchQueuePage(${batchUiPage - 1}, event)" ${batchUiPage <= 0 ? 'disabled' : ''}>
           <i class="fas fa-chevron-right"></i>
         </button>
-        <span>صفحة ${batchUiPage + 1} / ${totalPages} (عرض ${start + 1}–${end} من ${total})</span>
+        <span>${escapeHtml(tf('batchPageInfo', { page: batchUiPage + 1, total: totalPages, start: start + 1, end, count: total }))}</span>
         <button type="button" class="btn-batch-page" onclick="setBatchQueuePage(${batchUiPage + 1}, event)" ${batchUiPage >= totalPages - 1 ? 'disabled' : ''}>
           <i class="fas fa-chevron-left"></i>
         </button>
@@ -3578,10 +4656,10 @@ function updateQueueUI() {
 
   const itemsHtml = entries.map(({ item, idx }) => {
     const statusText = item.status === 'pending'
-      ? 'انتظار'
+      ? t('batchStatusPending')
       : (item.status === 'downloading'
-        ? 'جاري التحميل...'
-        : (item.status === 'done' ? 'اكتمل ✓' : 'خطأ ✗'));
+        ? t('batchStatusDownloading')
+        : (item.status === 'done' ? t('batchStatusDone') : t('batchStatusError')));
     const statusTitle = item.status === 'error' && item.error ? escapeHtml(item.error) : '';
     const isCustomized = (item.quality && item.quality !== 'best') || (item.type && item.type !== 'video-audio') || item.filename;
     const badgeText = isCustomized
@@ -3596,21 +4674,21 @@ function updateQueueUI() {
       <div class="batch-item-wrapper ${isSelected ? 'selected' : ''} ${isNext ? 'is-next' : ''}">
         <div class="batch-item ${item.status} ${isSelected ? 'selected' : ''}">
           <div class="batch-item-left">
-            <input type="checkbox" class="batch-item-check" ${isSelected ? 'checked' : ''} onclick="toggleBatchItemSelect('${item.id}', event)" title="تحديد">
+            <input type="checkbox" class="batch-item-check" ${isSelected ? 'checked' : ''} onclick="toggleBatchItemSelect('${item.id}', event)" title="${escapeHtml(t('batchSelect'))}">
             <div class="batch-reorder-btns">
-              <button type="button" class="btn-batch-reorder" onclick="moveBatchItemToFirst('${item.id}', event)" title="تحميل أولاً" ${item.status !== 'pending' ? 'disabled' : ''}><i class="fas fa-angle-double-up"></i></button>
-              <button type="button" class="btn-batch-reorder" onclick="moveBatchItem('${item.id}', -1, event)" title="أعلى" ${!canMoveUp ? 'disabled' : ''}><i class="fas fa-chevron-up"></i></button>
-              <button type="button" class="btn-batch-reorder" onclick="moveBatchItem('${item.id}', 1, event)" title="أسفل" ${!canMoveDown ? 'disabled' : ''}><i class="fas fa-chevron-down"></i></button>
+              <button type="button" class="btn-batch-reorder" onclick="moveBatchItemToFirst('${item.id}', event)" title="${escapeHtml(t('batchDownloadFirst'))}" ${item.status !== 'pending' ? 'disabled' : ''}><i class="fas fa-angle-double-up"></i></button>
+              <button type="button" class="btn-batch-reorder" onclick="moveBatchItem('${item.id}', -1, event)" title="${escapeHtml(t('favoritesMoveUp'))}" ${!canMoveUp ? 'disabled' : ''}><i class="fas fa-chevron-up"></i></button>
+              <button type="button" class="btn-batch-reorder" onclick="moveBatchItem('${item.id}', 1, event)" title="${escapeHtml(t('favoritesMoveDown'))}" ${!canMoveDown ? 'disabled' : ''}><i class="fas fa-chevron-down"></i></button>
             </div>
-            <span class="batch-item-num">${idx + 1}${isNext ? '<small>التالي</small>' : ''}</span>
+            <span class="batch-item-num">${idx + 1}${isNext ? `<small>${escapeHtml(t('batchNext'))}</small>` : ''}</span>
             <span class="batch-item-url" title="${escapeHtml(item.url)}" onclick="toggleBatchItemSelect('${item.id}', event)">${escapeHtml(item.url)}<strong class="batch-item-badge">${badgeText}</strong></span>
           </div>
           <div class="batch-item-right-actions">
             <span class="batch-item-status ${item.status}" title="${statusTitle}">${statusText}</span>
-            <button type="button" class="btn-batch-mini-edit" onclick="toggleBatchItemEditor('${item.id}', event)" title="إعدادات هذا الرابط">
+            <button type="button" class="btn-batch-mini-edit" onclick="toggleBatchItemEditor('${item.id}', event)" title="${escapeHtml(t('batchItemSettings'))}">
               <i class="fas fa-cog"></i>
             </button>
-            <button type="button" class="btn-batch-mini-delete" onclick="removeBatchQueueItem('${item.id}', event)" title="حذف" ${item.status === 'downloading' ? 'disabled' : ''}>
+            <button type="button" class="btn-batch-mini-delete" onclick="removeBatchQueueItem('${item.id}', event)" title="${escapeHtml(t('favoritesDelete'))}" ${item.status === 'downloading' ? 'disabled' : ''}>
               <i class="fas fa-trash-alt"></i>
             </button>
           </div>
@@ -3619,39 +4697,39 @@ function updateQueueUI() {
         ${item.showEditor ? `
           <div class="batch-item-editor" onclick="event.stopPropagation()">
             <div class="batch-item-editor-header">
-              <strong><i class="fas fa-sliders-h"></i> إعدادات الرابط رقم ${idx + 1}</strong>
+              <strong><i class="fas fa-sliders-h"></i> ${escapeHtml(tf('batchItemSettingsTitle', { num: idx + 1 }))}</strong>
               <button type="button" class="btn-batch-icon" onclick="toggleBatchItemEditor('${item.id}', event)"><i class="fas fa-times"></i></button>
             </div>
             <div>
-              <label class="batch-editor-label">تعديل الرابط:</label>
+              <label class="batch-editor-label">${escapeHtml(t('batchEditUrl'))}</label>
               <input type="text" id="edit_url_${item.id}" value="${escapeHtml(item.url)}" class="batch-editor-input">
             </div>
             <div class="batch-editor-row">
               <div>
-                <label class="batch-editor-label">الجودة:</label>
+                <label class="batch-editor-label">${escapeHtml(t('bulkQuality'))}:</label>
                 <select id="edit_quality_${item.id}" class="batch-editor-input">
                   ${renderBatchQualityOptions(item.quality || 'best', item.type || 'video-audio')}
                 </select>
               </div>
               <div>
-                <label class="batch-editor-label">نوع التحميل:</label>
+                <label class="batch-editor-label">${escapeHtml(t('bulkDownloadType'))}:</label>
                 <select id="edit_type_${item.id}" class="batch-editor-input">
-                  <option value="video-audio" ${(item.type || 'video-audio') === 'video-audio' ? 'selected' : ''}>فيديو + صوت</option>
-                  <option value="video-only" ${item.type === 'video-only' ? 'selected' : ''}>فيديو فقط</option>
-                  <option value="audio" ${item.type === 'audio' ? 'selected' : ''}>صوت MP3</option>
+                  <option value="video-audio" ${(item.type || 'video-audio') === 'video-audio' ? 'selected' : ''}>${escapeHtml(t('typeVideoAudio'))}</option>
+                  <option value="video-only" ${item.type === 'video-only' ? 'selected' : ''}>${escapeHtml(t('typeVideoOnly'))}</option>
+                  <option value="audio" ${item.type === 'audio' ? 'selected' : ''}>${escapeHtml(t('typeAudioMp3'))}</option>
                 </select>
               </div>
             </div>
             <div>
-              <label class="batch-editor-label">اسم الملف المخصص (اختياري):</label>
-              <input type="text" id="edit_filename_${item.id}" value="${escapeHtml(item.filename || '')}" placeholder="اسم الملف..." class="batch-editor-input">
+              <label class="batch-editor-label">${escapeHtml(t('batchEditFilename'))}</label>
+              <input type="text" id="edit_filename_${item.id}" value="${escapeHtml(item.filename || '')}" placeholder="${escapeHtml(t('batchFilenamePlaceholder'))}" class="batch-editor-input">
             </div>
             <div class="batch-editor-footer">
               <button type="button" onclick="moveBatchItemToFirst('${item.id}', event)" class="btn-batch-mini-edit" ${item.status !== 'pending' ? 'disabled' : ''}>
-                <i class="fas fa-angle-double-up"></i> تحميل أولاً
+                <i class="fas fa-angle-double-up"></i> ${escapeHtml(t('batchDownloadFirst'))}
               </button>
               <button type="button" onclick="saveBatchItemEditor('${item.id}', event)" class="btn-batch-save">
-                <i class="fas fa-check"></i> حفظ
+                <i class="fas fa-check"></i> ${escapeHtml(t('batchSave'))}
               </button>
             </div>
           </div>
@@ -3668,7 +4746,7 @@ function addUrlsToQueue() {
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
 
   if (lines.length === 0) {
-    showStatus('ألصق روابط في المربع أولاً (رابط في كل سطر)', 'info');
+    showStatus(t('batchPasteFirst'), 'info');
     return 0;
   }
 
@@ -3698,11 +4776,11 @@ function addUrlsToQueue() {
 
   scheduleUpdateQueueUI(true);
   if (added > 0) {
-    showStatus(`تمت إضافة ${added} رابط إلى سلسلة التنزيل التلقائي (الإجمالي: ${downloadQueue.length})`, 'success');
+    showStatus(tf('batchAddedCount', { added, total: downloadQueue.length }), 'success');
   } else if (invalid > 0) {
-    showStatus('لم يتم العثور على روابط صالحة في النص', 'error');
+    showStatus(t('batchNoValidUrls'), 'error');
   } else {
-    showStatus('الروابط موجودة مسبقاً في القائمة', 'info');
+    showStatus(t('batchUrlsExist'), 'info');
   }
   return added;
 }
@@ -3739,7 +4817,7 @@ async function pasteAndAddUrlsToQueue() {
 function clearCompletedBatchItems() {
   const removedItems = downloadQueue.filter((q) => q.status === 'done' || q.status === 'error');
   if (removedItems.length === 0) {
-    showStatus('لا توجد عناصر مكتملة أو فاشلة لمسحها', 'info');
+    showStatus(t('batchNoCompleted'), 'info');
     return;
   }
   for (const item of removedItems) {
@@ -3749,12 +4827,12 @@ function clearCompletedBatchItems() {
   downloadQueue = downloadQueue.filter((q) => q.status !== 'done' && q.status !== 'error');
   syncBatchSelection();
   scheduleUpdateQueueUI(true);
-  showStatus(`تم مسح ${removedItems.length} عنصر مكتمل/فاشل من العرض (عداد الجلسة محفوظ)`, 'success');
+  showStatus(tf('batchClearedCompleted', { count: removedItems.length }), 'success');
 }
 
 function clearBatchQueue() {
   if (isQueueProcessing || downloadQueue.some((q) => q.status === 'downloading')) {
-    showStatus('أوقف السلسلة أولاً أو انتظر انتهاء التحميل الحالي قبل إفراغ القائمة', 'info');
+    showStatus(t('batchClearBlocked'), 'info');
     return;
   }
   downloadQueue = [];
@@ -3764,7 +4842,7 @@ function clearBatchQueue() {
   batchUiPage = 0;
   batchSessionStats = { done: 0, error: 0, processed: 0 };
   scheduleUpdateQueueUI(true);
-  showStatus('تم إفراغ قائمة التحميل المتتالي', 'info');
+  showStatus(t('batchQueueCleared'), 'info');
 }
 
 // ─── Auto-Paste to Batch Queue ────────────────────────────────────────────────
@@ -3781,7 +4859,7 @@ function showAutoPasteToast(url, count = 1) {
     toast.className = 'auto-paste-toast';
     toast.innerHTML = `
       <i class="fas fa-clipboard-check"></i>
-      <span id="autoPasteToastMsg">تمت الإضافة تلقائياً للقائمة</span>
+      <span id="autoPasteToastMsg">${escapeHtml(t('autoPasteAdded'))}</span>
       <span class="toast-url" id="autoPasteToastUrl"></span>`;
     document.body.appendChild(toast);
   }
@@ -3789,8 +4867,8 @@ function showAutoPasteToast(url, count = 1) {
   const urlEl = document.getElementById('autoPasteToastUrl');
   if (msgEl) {
     msgEl.textContent = count > 1
-      ? `تمت إضافة ${count} روابط تلقائياً للقائمة`
-      : 'تمت الإضافة تلقائياً للقائمة';
+      ? tf('autoPasteAddedMany', { count })
+      : t('autoPasteAdded');
   }
   if (urlEl) urlEl.textContent = count > 1 ? '' : (url || '');
   toast.classList.add('show');
@@ -3895,13 +4973,13 @@ function renderCopiedLinksDropdown() {
   if (!list) return;
 
   if (copiedLinksHistory.length === 0) {
-    list.innerHTML = '<p class="copied-links-empty">لا توجد روابط منسوخة بعد — انسخ رابطاً أو فعّل اللصق التلقائي</p>';
+    list.innerHTML = `<p class="copied-links-empty">${escapeHtml(t('copiedLinksEmpty'))}</p>`;
     return;
   }
 
   list.innerHTML = copiedLinksHistory.map((url, idx) => {
     let host = '';
-    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { host = 'رابط'; }
+    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { host = t('linkLabel'); }
     return `
       <button type="button" class="copied-link-item" data-url="${escapeHtml(url)}" title="${escapeHtml(url)}">
         <span class="copied-link-idx">${idx + 1}</span>
@@ -3947,7 +5025,7 @@ function bindCopiedLinksUI() {
     copiedLinksHistory = [];
     saveCopiedLinksHistory();
     renderCopiedLinksDropdown();
-    showStatus('تم مسح قائمة الروابط المنسوخة', 'info');
+    showStatus(t('copiedLinksCleared'), 'info');
   });
 
   document.getElementById('copiedLinksList')?.addEventListener('click', (e) => {
@@ -4015,7 +5093,7 @@ async function enableAutoPasteBatch(showMsg = true) {
   // المراقبة السريعة في العملية الرئيسية — تتجاهل الحافظة الحالية
   await window.electronAPI.setBatchAutoPaste?.(true);
   if (showMsg) {
-    showStatus('✅ اللصق التلقائي مُفعَّل — انسخ الروابط بسرعة وسيُضاف كل واحد فوراً', 'success');
+    showStatus(t('autoPasteOn'), 'success');
   }
 }
 
@@ -4025,7 +5103,7 @@ async function disableAutoPasteBatch(showMsg = true) {
   updateAutoPasteBtn();
   await window.electronAPI.setBatchAutoPaste?.(false);
   if (showMsg) {
-    showStatus('⏸ اللصق التلقائي متوقف', 'info');
+    showStatus(t('autoPasteOff'), 'info');
   }
 }
 
@@ -4060,19 +5138,19 @@ async function startBatchProcessing() {
   }
 
   if (downloadQueue.length === 0) {
-    showStatus('أضف روابط للقائمة أولاً ثم ابدأ التحميل', 'info');
+    showStatus(t('batchAddFirst'), 'info');
     return;
   }
 
   const pendingCount = downloadQueue.filter((q) => q.status === 'pending').length;
   if (pendingCount === 0) {
-    showStatus('لا توجد روابط بانتظار التحميل في القائمة', 'info');
+    showStatus(t('batchNoPending'), 'info');
     return;
   }
 
   batchStopRequested = false;
   isQueueProcessing = true;
-  showStatus(`بدء التحميل التلقائي لـ ${pendingCount} رابط (بدون حد أقصى للجلسة)...`, 'info');
+  showStatus(tf('batchStartCount', { count: pendingCount }), 'info');
   scheduleUpdateQueueUI(true);
   await processNextBatchItem();
 }
@@ -4085,7 +5163,7 @@ async function stopBatchProcessing() {
   } catch {
     // ignore
   }
-  showStatus('جارٍ إيقاف السلسلة بعد إنهاء/إلغاء العنصر الحالي...', 'info');
+  showStatus(t('batchStopping'), 'info');
   scheduleUpdateQueueUI(true);
 }
 
@@ -4095,7 +5173,11 @@ async function processNextBatchItem() {
     batchStopRequested = false;
     scheduleUpdateQueueUI(true);
     showStatus(
-      `تم إيقاف السلسلة — نجح ${batchSessionStats.done} | فشل ${batchSessionStats.error} | متبقي ${downloadQueue.filter((q) => q.status === 'pending').length}`,
+      tf('batchStopped', {
+        done: batchSessionStats.done,
+        error: batchSessionStats.error,
+        left: downloadQueue.filter((q) => q.status === 'pending').length
+      }),
       'info'
     );
     return;
@@ -4108,12 +5190,12 @@ async function processNextBatchItem() {
     const pendingLeft = downloadQueue.filter((q) => q.status === 'pending').length;
     if (batchSessionStats.error > 0) {
       showStatus(
-        `انتهى التحميل: نجح ${batchSessionStats.done} | فشل ${batchSessionStats.error}` +
-          (pendingLeft ? ` | متبقي ${pendingLeft}` : ''),
+        tf('batchFinishedMixed', { done: batchSessionStats.done, error: batchSessionStats.error }) +
+          (pendingLeft ? tf('batchFinishedLeft', { left: pendingLeft }) : ''),
         batchSessionStats.done === 0 ? 'error' : 'info'
       );
     } else {
-      showStatus(`اكتمل تحميل السلسلة بنجاح! (${batchSessionStats.done} فيديو)`, 'success');
+      showStatus(tf('batchFinishedOk', { count: batchSessionStats.done }), 'success');
     }
     return;
   }
@@ -4176,10 +5258,10 @@ async function processNextBatchItem() {
       batchSessionStats.processed += 1;
     } else {
       item.status = 'error';
-      item.error = result?.error || t('errDownloadFailed') || 'فشل التحميل';
+      item.error = result?.error || t('errDownloadFailed');
       batchSessionStats.error += 1;
       batchSessionStats.processed += 1;
-      showStatus(`فشل رابط (${batchSessionStats.processed}): ${item.error}`, 'error');
+      showStatus(tf('batchFailItem', { num: batchSessionStats.processed, error: item.error }), 'error');
     }
   } catch (err) {
     console.error('Batch item error:', err);
@@ -4188,10 +5270,10 @@ async function processNextBatchItem() {
       item.error = null;
     } else {
       item.status = 'error';
-      item.error = err?.message || t('errDownloadFailed') || 'فشل التحميل';
+      item.error = err?.message || t('errDownloadFailed');
       batchSessionStats.error += 1;
       batchSessionStats.processed += 1;
-      showStatus(`فشل رابط (${batchSessionStats.processed}): ${item.error}`, 'error');
+      showStatus(tf('batchFailItem', { num: batchSessionStats.processed, error: item.error }), 'error');
     }
   } finally {
     pruneCompletedBatchItems();
@@ -4287,9 +5369,9 @@ function updateQuickPlayButtonLabel() {
   const label = document.getElementById('quickPlayBtnLabel');
   const btn = elements.quickPlayBtn;
   const isImage = studioMode === 'image' || /\.(png|jpe?g|webp|gif|bmp)$/i.test(lastDownloadedPath || '');
-  if (label) label.textContent = isImage ? 'فتح الصورة' : 'فتح الملف';
+  if (label) label.textContent = isImage ? t('openImage') : t('openFile');
   if (btn) {
-    btn.title = isImage ? 'فتح الصورة المحمّلة' : 'فتح الملف المحمّل';
+    btn.title = isImage ? t('openImage') : t('openFile');
     const icon = btn.querySelector('i');
     if (icon) icon.className = isImage ? 'fas fa-image' : 'fas fa-external-link-alt';
   }
@@ -4471,6 +5553,14 @@ function refreshUiAfterLanguageChange() {
   updateDownloadButtonText();
   updateQualityHint();
   renderFavoritesList();
+  fillWatchLaterCategorySelect();
+  renderWatchLaterFilters();
+  renderWatchLaterList();
+  updateAspectBadge();
+  scheduleUpdateQueueUI(true);
+  renderCopiedLinksDropdown();
+  updateQuickPlayButtonLabel();
+  loadPlatforms();
 
   if (currentVideoInfo) {
     displayVideoInfo(currentVideoInfo, { preserveStudioMode: true });
@@ -4519,6 +5609,7 @@ async function initializeApp() {
   loadPlatforms();
   bindPlatformTagLinks();
   initFavorites();
+  initWatchLater();
 
   // تهيئة اللصق التلقائي للسلسلة (يتجاهل روابط الحافظة الموجودة قبل التفعيل)
   await initAutoPasteBatch();

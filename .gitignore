@@ -16,6 +16,13 @@ temp/
 *.srt
 cookies.txt
 
+# Electron user data, caches, and build output
+data/
+dist/
+*.tmp
+*.TMP
+*.bak
+
 # OS Generated
 .DS_Store
 Thumbs.db

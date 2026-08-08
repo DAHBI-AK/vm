@@ -680,29 +680,37 @@ function runYtDlp(args) {
   return new Promise((resolve, reject) => {
     const child = spawn(ytDlpPath, args, {
       windowsHide: true,
-      env: { ...process.env, PYTHONUTF8: '1' }
+      env: {
+        ...process.env,
+        PYTHONUTF8: '1',
+        PYTHONIOENCODING: 'utf-8',
+        LANG: 'en_US.UTF-8',
+        LC_ALL: 'en_US.UTF-8'
+      }
     });
 
-    let stdout = '';
-    let stderr = '';
+    let stdout = Buffer.alloc(0);
+    let stderr = Buffer.alloc(0);
 
     child.stdout.on('data', (data) => {
-      stdout += data.toString();
+      stdout = Buffer.concat([stdout, Buffer.isBuffer(data) ? data : Buffer.from(String(data))]);
     });
 
     child.stderr.on('data', (data) => {
-      stderr += data.toString();
+      stderr = Buffer.concat([stderr, Buffer.isBuffer(data) ? data : Buffer.from(String(data))]);
     });
 
     child.on('error', reject);
 
     child.on('close', (code) => {
+      const outText = stdout.toString('utf8');
+      const errText = stderr.toString('utf8');
       if (code === 0) {
-        resolve(stdout);
+        resolve(outText);
         return;
       }
 
-      reject(new Error(stderr.trim() || `yt-dlp exited with code ${code}`));
+      reject(new Error(errText.trim() || `yt-dlp exited with code ${code}`));
     });
   });
 }
@@ -2042,31 +2050,178 @@ function normalizeChannelCheckUrl(rawUrl) {
   return normalized;
 }
 
+function channelIdentityUrl(rawUrl) {
+  const normalized = normalizeUrl(rawUrl);
+  try {
+    const u = new URL(normalized);
+    u.hash = '';
+    u.search = '';
+    let path = u.pathname.replace(/\/+$/, '') || '/';
+    path = path.replace(/\/(videos|streams|shorts|releases|playlists|featured|about)$/i, '');
+    u.pathname = path || '/';
+    return u.toString();
+  } catch {
+    return normalized;
+  }
+}
+
+function getYtDlpChannelMetaArgs(url = '') {
+  // Web client + Accept-Language → اسم العرض كما يظهر على المنصة (وليس الـ handle)
+  const args = [
+    '--no-update',
+    '--no-warnings',
+    '--no-check-certificates',
+    '--geo-bypass',
+    '--encoding', 'utf-8',
+    '--add-header', 'Accept-Language:ar,ar-SA,en;q=0.8'
+  ];
+  if (url && (url.includes('youtube.com') || url.includes('youtu.be'))) {
+    args.push('--extractor-args', 'youtube:player_client=web');
+  }
+  return args;
+}
+
+function cleanChannelDisplayName(raw) {
+  let name = String(raw || '').trim();
+  if (!name || name === 'NA') return '';
+  name = name.replace(/[\u200B-\u200D\uFEFF]/g, '');
+  try { name = decodeURIComponent(name); } catch { /* keep */ }
+  name = name.replace(/^(Uploads from|Videos from|Streams from)\s+/i, '').trim();
+  name = name.replace(/\s*[-–—|]\s*(Videos|Streams|Shorts|Live|Releases|Playlists|Uploads|Home|Featured|فيديوهات|مقاطع|مباشر)\s*$/i, '').trim();
+  name = name.replace(/^[-–—\s]+|[-–—\s]+$/g, '').trim();
+  name = name.replace(/\s+/g, ' ').trim();
+  if (!name || /^(videos|streams|shorts|live|uploads|home|featured|na)$/i.test(name)) return '';
+  if (/^[\s?\uFFFD\-–—]+$/.test(name)) return '';
+  if (/^UC[\w-]{20,}$/i.test(name)) return '';
+  return name;
+}
+
+function pickBestChannelName(candidates = [], urlHint = '') {
+  let urlSlug = '';
+  try {
+    const u = new URL(urlHint || '');
+    const m = u.pathname.match(/\/@([^/]+)/) || u.pathname.match(/\/c\/([^/]+)/) || u.pathname.match(/\/user\/([^/]+)/);
+    if (m?.[1]) urlSlug = decodeURIComponent(m[1]).toLowerCase().replace(/^@/, '');
+  } catch { /* ignore */ }
+
+  const scored = [];
+  for (const candidate of candidates) {
+    const cleaned = cleanChannelDisplayName(candidate);
+    if (!cleaned) continue;
+    let score = cleaned.length;
+    if (/[\u0600-\u06FF]/.test(cleaned)) score += 50; // Arabic display names
+    if (/[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(cleaned)) score += 10; // surrogate pairs / emoji
+    if (cleaned.startsWith('@')) score -= 40; // handle, not display name
+    const noAt = cleaned.replace(/^@/, '').toLowerCase();
+    if (urlSlug && (noAt === urlSlug || cleaned.toLowerCase() === urlSlug)) score -= 35;
+    if (/^[A-Za-z0-9._-]+$/.test(cleaned) && cleaned.length < 24) score -= 8;
+    scored.push({ cleaned, score });
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0]?.cleaned || '';
+}
+
+async function resolveChannelDisplayName(channelUrl) {
+  const identityUrl = channelIdentityUrl(channelUrl);
+  const metaFlags = getYtDlpChannelMetaArgs(identityUrl);
+
+  // 1) JSON metadata — most accurate channel/uploader display name
+  try {
+    const jsonOut = await runYtDlp([
+      ...metaFlags,
+      '--skip-download',
+      '--flat-playlist',
+      '--playlist-end', '1',
+      '-J',
+      identityUrl
+    ]);
+    const data = JSON.parse(String(jsonOut || '{}'));
+    const entry = Array.isArray(data.entries) && data.entries[0] ? data.entries[0] : {};
+    const fromJson = pickBestChannelName([
+      data.channel,
+      data.uploader,
+      data.playlist_uploader,
+      data.playlist_channel,
+      entry.channel,
+      entry.uploader,
+      entry.playlist_uploader,
+      entry.creator,
+      data.playlist_title,
+      data.title
+    ], identityUrl);
+    if (fromJson) return fromJson;
+  } catch {
+    /* try print fallback */
+  }
+
+  // 2) Print fields fallback
+  try {
+    const metaOut = await runYtDlp([
+      ...metaFlags,
+      '--skip-download',
+      '--flat-playlist',
+      '--playlist-end', '1',
+      '--print', '%(channel)s\n%(uploader)s\n%(playlist_uploader)s\n%(playlist_channel)s\n%(playlist_title)s',
+      identityUrl
+    ]);
+    const lines = String(metaOut || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const fromPrint = pickBestChannelName(lines, identityUrl);
+    if (fromPrint) return fromPrint;
+  } catch {
+    /* ignore */
+  }
+
+  return '';
+}
+
 async function fetchChannelLatestEntries(channelUrl, limit = 8) {
   await waitForYtDlp();
   const url = normalizeChannelCheckUrl(channelUrl);
   const baseFlags = getYtDlpBaseArgs(url);
   const max = Math.max(1, Math.min(20, Number(limit) || 8));
 
+  let channelName = '';
+  try {
+    channelName = await resolveChannelDisplayName(channelUrl);
+  } catch {
+    channelName = '';
+  }
+
   const output = await runYtDlp([
     ...baseFlags,
+    '--encoding', 'utf-8',
     '--flat-playlist',
     '--skip-download',
     '--playlist-end', String(max),
-    '--print', '%(id)s\t%(title)s\t%(webpage_url)s\t%(uploader,channel,playlist_title,playlist)s',
+    '--print', '%(id)s\t%(title)s\t%(webpage_url)s\t%(channel)s\t%(uploader)s\t%(playlist_uploader)s\t%(playlist_channel)s\t%(playlist_title)s',
     url
   ]);
 
   const entries = [];
-  let channelName = '';
   for (const line of String(output || '').split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || !trimmed.includes('\t')) continue;
-    const [id, title, webpageUrl, uploader] = trimmed.split('\t');
+    const parts = trimmed.split('\t');
+    const id = parts[0];
+    const title = parts[1];
+    const webpageUrl = parts[2];
+    const channel = parts[3];
+    const uploader = parts[4];
+    const playlistUploader = parts[5];
+    const playlistChannel = parts[6];
+    const playlistTitle = parts[7];
     if (!id || id === 'NA') continue;
-    if (uploader && uploader !== 'NA' && !channelName) {
-      channelName = uploader;
+
+    if (!channelName) {
+      channelName = pickBestChannelName([
+        channel,
+        uploader,
+        playlistUploader,
+        playlistChannel,
+        playlistTitle
+      ], url);
     }
+
     let videoUrl = webpageUrl && webpageUrl !== 'NA' ? webpageUrl : '';
     if (!videoUrl) {
       if (/^[A-Za-z0-9_-]{6,}$/.test(id)) {

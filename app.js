@@ -433,7 +433,7 @@ function displayVideoInfo(info) {
 
   updateGlobalSettingsBadge();
   setupVideoPreviewPlayer(info);
-  renderQualityGrid(info.availableHeights || [1080, 720, 480]);
+  renderQualityGrid();
 }
 
 function updateGlobalSettingsBadge() {
@@ -480,14 +480,31 @@ function formatDuration(seconds) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-function renderQualityGrid(heights) {
-  selectedHeight = heights[0] || 'best';
-  elements.unifiedQualityGrid.innerHTML = heights.map((h, i) => `
-    <div class="quality-card ${i === 0 ? 'active' : ''}" data-height="${h}">
-      <strong>${h}p HD</strong>
-      <span style="font-size:11px; display:block; opacity:0.8;">جودة عالية</span>
-    </div>
-  `).join('');
+function getMobileQualityLabel(h) {
+  if (h === 'best') return { title: 'أقصى جودة', sub: 'بدون سقف — حتى 8K' };
+  const n = Number(h);
+  if (n >= 4320) return { title: `${n}p · 8K`, sub: 'جودة قصوى' };
+  if (n >= 2160) return { title: `${n}p · 4K UHD`, sub: 'جودة فائقة' };
+  if (n >= 1440) return { title: `${n}p · 2K QHD`, sub: 'جودة فائقة' };
+  if (n >= 1080) return { title: `${n}p · Full HD`, sub: 'جودة عالية' };
+  if (n >= 720) return { title: `${n}p · HD`, sub: 'جودة عالية' };
+  if (n >= 480) return { title: `${n}p`, sub: 'جودة متوسطة' };
+  if (n >= 360) return { title: `${n}p`, sub: 'جودة متوسطة' };
+  return { title: `${n}p`, sub: 'جودة منخفضة' };
+}
+
+function renderQualityGrid() {
+  const options = [144, 240, 360, 480, 720, 1080, 1440, 2160, 4320, 'best'];
+  selectedHeight = 'best';
+  elements.unifiedQualityGrid.innerHTML = options.map((h) => {
+    const { title, sub } = getMobileQualityLabel(h);
+    const active = h === 'best' ? 'active' : '';
+    return `
+    <div class="quality-card ${active}" data-height="${h}">
+      <strong>${title}</strong>
+      <span style="font-size:11px; display:block; opacity:0.8;">${sub}</span>
+    </div>`;
+  }).join('');
 
   elements.unifiedQualityGrid.querySelectorAll('.quality-card').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -753,11 +770,16 @@ function renderBatchQueueList() {
               <div>
                 <label style="display:block; margin-bottom:4px; color:var(--text-secondary);">الجودة:</label>
                 <select id="edit_mob_quality_${item.id}" style="width:100%; padding:6px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:#fff; font-size:12px;">
-                  <option value="best" ${(item.quality || 'best') === 'best' ? 'selected' : ''}>أفضل جودة (Best HD)</option>
-                  <option value="1080" ${item.quality === '1080' ? 'selected' : ''}>1080p Full HD</option>
-                  <option value="720" ${item.quality === '720' ? 'selected' : ''}>720p HD</option>
-                  <option value="480" ${item.quality === '480' ? 'selected' : ''}>480p</option>
+                  <option value="best" ${(item.quality || 'best') === 'best' ? 'selected' : ''}>أقصى جودة (حتى 8K)</option>
+                  <option value="144" ${item.quality === '144' ? 'selected' : ''}>144p</option>
+                  <option value="240" ${item.quality === '240' ? 'selected' : ''}>240p</option>
                   <option value="360" ${item.quality === '360' ? 'selected' : ''}>360p</option>
+                  <option value="480" ${item.quality === '480' ? 'selected' : ''}>480p</option>
+                  <option value="720" ${item.quality === '720' ? 'selected' : ''}>720p HD</option>
+                  <option value="1080" ${item.quality === '1080' ? 'selected' : ''}>1080p Full HD</option>
+                  <option value="1440" ${item.quality === '1440' ? 'selected' : ''}>1440p · 2K</option>
+                  <option value="2160" ${item.quality === '2160' ? 'selected' : ''}>2160p · 4K UHD</option>
+                  <option value="4320" ${item.quality === '4320' ? 'selected' : ''}>4320p · 8K</option>
                 </select>
               </div>
               <div>
@@ -856,7 +878,7 @@ function updateHistoryUI() {
 
 function populatePlatforms() {
   if (!elements.platformsGrid) return;
-  const platforms = ['YouTube', 'TikTok', 'Instagram', 'Facebook', 'Twitter / X', 'Pinterest', 'Twitch', 'Vimeo', 'SoundCloud', 'Reddit'];
+  const platforms = ['YouTube', 'TikTok', 'Instagram', 'Facebook', 'Twitter / X', 'Pinterest', 'Twitch', 'Kick', 'Trovo', 'Vimeo', 'SoundCloud', 'Reddit'];
   elements.platformsGrid.innerHTML = platforms.map(p => `
     <div style="padding:14px; background:var(--bg-card); border-radius:12px; text-align:center; margin-bottom:10px;">
       <i class="fas fa-check-circle" style="color:var(--primary); font-size:20px;"></i>
