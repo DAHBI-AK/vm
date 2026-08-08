@@ -1066,16 +1066,16 @@ function getVideoWithAudioSelector(options) {
 }
 
 function formatSectionTime(seconds) {
-  const total = Math.max(0, Math.floor(seconds));
+  const total = Math.max(0, Number(seconds) || 0);
   const hours = Math.floor(total / 3600);
   const minutes = Math.floor((total % 3600) / 60);
   const secs = total % 60;
-
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }
-
-  return `${minutes}:${String(secs).padStart(2, '0')}`;
+  const whole = Math.floor(secs);
+  const millis = Math.round((secs - whole) * 1000);
+  const secStr = millis > 0
+    ? `${String(whole).padStart(2, '0')}.${String(millis).padStart(3, '0')}`
+    : String(whole).padStart(2, '0');
+  return `${hours}:${String(minutes).padStart(2, '0')}:${secStr}`;
 }
 
 function applyClipSection(args, options) {
@@ -1095,6 +1095,243 @@ function applyClipSection(args, options) {
     `*${formatSectionTime(clipStart)}-${formatSectionTime(clipEnd)}`,
     '--force-keyframes-at-cuts'
   );
+}
+
+function resolveClipOutputPath(outputDir, options) {
+  let name = String(options?.filename || 'clip').trim() || 'clip';
+  name = name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').replace(/\.+$/, '');
+  if (!/\.(mp4|webm|mkv)$/i.test(name)) {
+    name += '.mp4';
+  }
+  return path.join(outputDir, name);
+}
+
+function findTempOutputFile(dir, prefix) {
+  try {
+    return fs.readdirSync(dir)
+      .filter((name) => name.startsWith(prefix) && !/\.(part|ytdl|temp)$/i.test(name))
+      .map((name) => {
+        const full = path.join(dir, name);
+        return { full, mtime: fs.statSync(full).mtimeMs };
+      })
+      .sort((a, b) => b.mtime - a.mtime)[0]?.full || null;
+  } catch {
+    return null;
+  }
+}
+
+function spawnFfmpegClip(args) {
+  return new Promise((resolve, reject) => {
+    const child = trackDownloadChild(spawn(ffmpegStatic, args, { windowsHide: true }));
+    let stderr = '';
+    child.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+    child.on('error', reject);
+    child.on('close', (code, signal) => {
+      if (signal) {
+        reject(new Error('تم إلغاء التحميل'));
+        return;
+      }
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(stderr.trim() || `فشل ffmpeg (رمز ${code})`));
+    });
+  });
+}
+
+async function cutMediaWithFfmpeg(inputPath, outputPath, startSec, endSec, videoOnly) {
+  const duration = Math.max(0.1, Number(endSec) - Number(startSec));
+  const args = [
+    '-hide_banner',
+    '-nostdin',
+    '-y',
+    '-ss', String(Math.max(0, startSec)),
+    '-i', inputPath,
+    '-t', String(duration),
+    '-map', '0:v:0?'
+  ];
+
+  if (videoOnly) {
+    args.push('-an');
+  } else {
+    args.push('-map', '0:a:0?', '-c:a', 'aac', '-b:a', '192k');
+  }
+
+  args.push('-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-movflags', '+faststart', outputPath);
+  await spawnFfmpegClip(args);
+  if (!fs.existsSync(outputPath)) {
+    throw new Error('تعذر حفظ ملف المقطع');
+  }
+}
+
+async function downloadClipViaStreamUrls(url, options, outputPath) {
+  const clipStart = Number(options.clipStart);
+  const clipEnd = Number(options.clipEnd);
+  const duration = Math.max(0.1, clipEnd - clipStart);
+  const videoOnly = options.type === 'video-only';
+  const selector = videoOnly ? getVideoOnlySelector(options) : getVideoWithAudioSelector(options);
+  const normalizedUrl = normalizeUrl(url);
+
+  sendDownloadProgress(8, { message: 'جاري تجهيز روابط المقطع...' });
+  const printed = await runYtDlp([
+    ...getYtDlpBaseArgs(normalizedUrl),
+    '-f', selector,
+    '-g',
+    '--no-playlist',
+    normalizedUrl
+  ]);
+
+  const urls = printed.trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  if (!urls.length) {
+    throw new Error('تعذر الحصول على رابط البث للمقطع');
+  }
+
+  const buildArgs = (inputSeek) => {
+    const args = [
+      '-hide_banner',
+      '-nostdin',
+      '-loglevel', 'error',
+      '-y',
+      '-user_agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      '-referer', 'https://www.youtube.com/'
+    ];
+
+    const addInput = (streamUrl) => {
+      if (inputSeek) {
+        args.push('-ss', String(clipStart));
+      }
+      args.push('-i', streamUrl);
+    };
+
+    if (urls.length >= 2 && !videoOnly) {
+      addInput(urls[0]);
+      addInput(urls[1]);
+      if (!inputSeek) {
+        args.push('-ss', String(clipStart));
+      }
+      args.push('-t', String(duration), '-map', '0:v:0?', '-map', '1:a:0?');
+    } else {
+      addInput(urls[0]);
+      if (!inputSeek) {
+        args.push('-ss', String(clipStart));
+      }
+      args.push('-t', String(duration));
+      if (videoOnly) {
+        args.push('-an');
+      }
+    }
+
+    args.push(
+      '-c:v', 'libx264',
+      '-preset', 'veryfast',
+      '-crf', '23',
+      '-c:a', 'aac',
+      '-b:a', '192k',
+      '-movflags', '+faststart',
+      outputPath
+    );
+    return args;
+  };
+
+  sendDownloadProgress(20, { message: `جاري قص المقطع ${formatSectionTime(clipStart)} → ${formatSectionTime(clipEnd)}...` });
+  try {
+    await spawnFfmpegClip(buildArgs(true));
+  } catch {
+    sendDownloadProgress(35, { message: 'إعادة قص المقطع بطريقة أدق...' });
+    await spawnFfmpegClip(buildArgs(false));
+  }
+
+  if (!fs.existsSync(outputPath)) {
+    throw new Error('تعذر حفظ ملف المقطع');
+  }
+}
+
+async function downloadClipVideo(url, options, outputDir) {
+  if (!ytDlpPath || !isValidYtDlpBinary(ytDlpPath)) {
+    throw new Error('yt-dlp غير جاهز بعد');
+  }
+  ensureFfmpegReady();
+
+  const clipStart = Number(options.clipStart);
+  const clipEnd = Number(options.clipEnd);
+  if (!Number.isFinite(clipStart) || !Number.isFinite(clipEnd) || clipEnd <= clipStart) {
+    throw new Error('نطاق القص غير صالح. تأكد أن وقت النهاية أكبر من البداية');
+  }
+
+  const outputPath = resolveClipOutputPath(outputDir, options);
+  const tempId = `._vm_clip_src_${Date.now()}`;
+  const tempPattern = path.join(outputDir, `${tempId}.%(ext)s`);
+  const videoOnly = options.type === 'video-only';
+  const selector = videoOnly ? getVideoOnlySelector(options) : getVideoWithAudioSelector(options);
+  const normalizedUrl = normalizeUrl(url);
+  assertNetflixNotBlocked(normalizedUrl);
+
+  try {
+    await downloadClipViaStreamUrls(url, options, outputPath);
+    sendDownloadProgress(100, { message: 'اكتمل تصدير المقطع' });
+    return { success: true, path: outputPath };
+  } catch (streamError) {
+    sendDownloadProgress(15, { message: 'جاري تحميل المقطع عبر المحرك...' });
+  }
+
+  const sectionArgs = [
+    ...getYtDlpBaseArgs(normalizedUrl),
+    ...getSpeedArgs({ turbo: options.turbo !== false }),
+    '--no-playlist',
+    '--newline',
+    '--progress',
+    '-f', selector,
+    '--merge-output-format', 'mp4',
+    '--download-sections', `*${formatSectionTime(clipStart)}-${formatSectionTime(clipEnd)}`,
+    '--force-keyframes-at-cuts',
+    '-o', tempPattern,
+    normalizedUrl
+  ];
+
+  try {
+    await spawnYtDlpDownload(sectionArgs, { progressStart: 15, progressEnd: 90 });
+    const sectionFile = findTempOutputFile(outputDir, tempId);
+    if (!sectionFile) {
+      throw new Error('تعذر إيجاد ملف المقطع بعد التحميل');
+    }
+    try {
+      fs.copyFileSync(sectionFile, outputPath);
+    } catch {
+      fs.renameSync(sectionFile, outputPath);
+    }
+    cleanupTempFiles([sectionFile]);
+    sendDownloadProgress(100, { message: 'اكتمل تصدير المقطع' });
+    return { success: true, path: outputPath };
+  } catch {
+    sendDownloadProgress(25, { message: 'جاري تحميل المصدر ثم قص المقطع...' });
+  }
+
+  const fullArgs = [
+    ...getYtDlpBaseArgs(normalizedUrl),
+    ...getSpeedArgs({ turbo: options.turbo !== false }),
+    '--no-playlist',
+    '--newline',
+    '--progress',
+    '-f', selector,
+    '--merge-output-format', 'mp4',
+    '-o', tempPattern,
+    normalizedUrl
+  ];
+
+  await spawnYtDlpDownload(fullArgs, { progressStart: 25, progressEnd: 80 });
+  const sourceFile = findTempOutputFile(outputDir, tempId);
+  if (!sourceFile) {
+    throw new Error('تعذر تحميل مصدر المقطع');
+  }
+
+  sendDownloadProgress(85, { message: 'جاري قص المقطع بدقة...' });
+  await cutMediaWithFfmpeg(sourceFile, outputPath, clipStart, clipEnd, videoOnly);
+  cleanupTempFiles([sourceFile]);
+  sendDownloadProgress(100, { message: 'اكتمل تصدير المقطع' });
+  return { success: true, path: outputPath };
 }
 
 function getVideoOnlySelector(options) {
@@ -1129,7 +1366,18 @@ function buildDownloadArgs(url, options, outputPath) {
     '--progress'
   ];
 
-  if (options.type === 'audio') {
+  if (options.mode === 'clip') {
+    const clipType = options.type === 'video-only' ? 'video-only' : 'video-audio';
+    if (clipType === 'video-only') {
+      args.push('-f', getVideoOnlySelector(options), '--remux-video', 'mp4');
+    } else {
+      args.push(
+        '-f', getVideoWithAudioSelector(options),
+        '--merge-output-format', 'mp4'
+      );
+    }
+    applyClipSection(args, options);
+  } else if (options.type === 'audio') {
     args.push(
       '-f', getAudioFormatSelector(options),
       '-x',
@@ -1141,26 +1389,12 @@ function buildDownloadArgs(url, options, outputPath) {
       '-f', getVideoOnlySelector(options),
       '--remux-video', 'mp4'
     );
-  } else if (options.mode === 'clip') {
-    const clipType = options.type === 'video-only' ? 'video-only' : 'video-audio';
-    if (clipType === 'video-only') {
-      args.push('-f', getVideoOnlySelector(options), '--remux-video', 'mp4');
-    } else {
-      args.push(
-        '-f', getVideoWithAudioSelector(options),
-        '--merge-output-format', 'mp4'
-      );
-    }
-    applyClipSection(args, options);
   } else {
     args.push(
       '-f', getVideoWithAudioSelector(options),
-      '--merge-output-format', 'mp4'
+      '--merge-output-format', 'mp4',
+      '--embed-metadata'
     );
-
-    if (options.mode !== 'clip') {
-      args.push('--embed-metadata');
-    }
   }
 
   args.push('-o', output, normalizedUrl);
@@ -1886,6 +2120,10 @@ ipcMain.handle('get-preview-subtitles', async (event, data) => {
 async function downloadVideo(url, options, outputPath) {
   if (!ytDlpPath || !isValidYtDlpBinary(ytDlpPath)) {
     throw new Error('yt-dlp غير جاهز بعد');
+  }
+
+  if (options?.mode === 'clip') {
+    return downloadClipVideo(url, options, outputPath);
   }
 
   const { args, output } = buildDownloadArgs(url, options, outputPath);

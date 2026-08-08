@@ -1,0 +1,11 @@
+node_modules
+data
+dist
+.git
+*.mp4
+*.mp3
+*.m4a
+*.webm
+*.tmp
+Thumbs.db
+.DS_Store

@@ -1,10 +1,13 @@
 {
   "name": "vm-downloader",
   "version": "1.0.0",
-  "description": "VM — تطبيق تحميل الفيديوهات والأغاني بجودة عالية",
+  "description": "VM — تطبيق ويب (HTML / CSS / JS) لتحميل الفيديوهات والأغاني",
   "main": "src/main.js",
   "scripts": {
-    "start": "node_modules\\electron\\dist\\electron.exe .",
+    "start": "node scripts/serve-mobile.js",
+    "web": "node scripts/serve-mobile.js",
+    "ensure:ytdlp": "node scripts/ensure-ytdlp.js",
+    "desktop": "node_modules\\electron\\dist\\electron.exe .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
     "setup": "node scripts/setup.js",
@@ -15,6 +18,9 @@
   },
   "author": "VM",
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "devDependencies": {
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1"

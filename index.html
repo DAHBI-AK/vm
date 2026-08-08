@@ -1,361 +1,441 @@
 <!DOCTYPE html>
+<!-- VM Web App: HTML + CSS + JS (PWA) -->
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>VM</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b0f19">
+  <meta name="theme-color" content="#ef4444">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=4.22">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Full-Screen App Opening Splash Screen (شاشه فتح التطبيق بشعار كامل) -->
   <div id="splashScreen" class="splash-overlay">
     <div class="splash-content">
-      <img src="assets/icon.png" alt="VM Logo" class="splash-logo">
-      <h1 class="splash-title">VM</h1>
-      <p class="splash-tagline">Downloader Pro</p>
+      <img src="assets/vm-icon.png" alt="VM" class="splash-logo" onerror="this.src='assets/icon.png'">
+      <h1>VM</h1>
       <div class="splash-spinner"></div>
     </div>
   </div>
 
-  <!-- Mobile App Header -->
+  <div class="phone-app">
   <header class="mobile-header">
-    <div class="mobile-brand">
-      <img src="assets/icon.png" alt="VM Logo" class="brand-logo-img">
-      <div class="brand-text">
-        <h1>VM</h1>
-        <span>Downloader Pro</span>
-      </div>
+    <div class="mobile-brand" role="button" tabindex="0" title="الرئيسية" aria-label="الرئيسية">
+      <img src="assets/vm-icon.png" alt="VM" class="brand-logo-img" onerror="this.src='assets/icon.png'">
+      <strong>VM</strong>
     </div>
-    <button type="button" class="btn-install-app hidden" id="installAppBtn">
-      <i class="fas fa-download"></i>
-      <span>تثبيت التطبيق</span>
-    </button>
-    <div class="mobile-status-pill ready" id="mobileStatusPill">
-      <i class="fas fa-wifi"></i>
-      <span>مستقل</span>
+    <div class="header-actions">
+      <button type="button" class="icon-btn hidden" id="installAppBtn" title="تثبيت"><i class="fas fa-plus-square"></i></button>
+      <span class="status-dot ready" id="mobileStatusPill" title="جاهز"><i class="fas fa-circle"></i></span>
     </div>
   </header>
 
-  <!-- Mobile Main Content Container -->
   <main class="mobile-main">
-    <!-- Downloader Tab View -->
     <section class="tab-view active" id="downloaderTab">
-      <div class="mobile-search-card">
+      <div class="glass-card search-card">
         <div class="input-wrapper">
           <i class="fas fa-link input-icon"></i>
-          <input type="text" id="videoUrl" placeholder="ألصق رابط الفيديو هنا..." autocomplete="off">
-          <button type="button" class="btn-input-clear" id="clearBtn"><i class="fas fa-times"></i></button>
+          <input type="url" id="videoUrl" placeholder="ألصق الرابط" autocomplete="off" spellcheck="false">
+          <button type="button" class="icon-btn ghost" id="clearBtn" title="مسح"><i class="fas fa-times"></i></button>
         </div>
-        
-        <div class="mobile-action-bar">
-          <button type="button" class="btn-mobile-primary" id="fetchBtn">
-            <i class="fas fa-search"></i> <span>بحث والجلب</span>
-          </button>
-          <button type="button" class="btn-mobile-secondary" id="pasteBtn">
-            <i class="fas fa-paste"></i> <span>لصق وبحث</span>
-          </button>
-          <button type="button" class="btn-mobile-secondary" id="chooseFolderBtn">
-            <i class="fas fa-folder-open"></i> <span>مكان التحميل</span>
-          </button>
-          <button type="button" class="btn-mobile-secondary" id="batchToggleBtn">
-            <i class="fas fa-list-ol"></i> <span>سلسلة</span>
-          </button>
+        <div class="icon-row">
+          <button type="button" class="icon-fab primary" id="fetchBtn" title="بحث"><i class="fas fa-search"></i></button>
+          <button type="button" class="icon-fab" id="pasteBtn" title="لصق وبحث"><i class="fas fa-paste"></i></button>
+          <button type="button" class="icon-fab" id="chooseFolderBtn" title="مجلد التحميل"><i class="fas fa-folder-open"></i></button>
+          <button type="button" class="icon-fab" id="batchToggleBtn" title="سلسلة روابط"><i class="fas fa-list-ol"></i></button>
         </div>
       </div>
 
-      <!-- Batch Queue Panel -->
-      <div class="batch-queue-panel hidden" id="batchQueuePanel">
-        <div class="batch-panel-header">
-          <h4><i class="fas fa-layer-group"></i> <span>سلسلة روابط بدون قيود</span></h4>
-          <button type="button" class="btn-close-batch" id="closeBatchBtn"><i class="fas fa-times"></i></button>
+      <div class="glass-card batch-queue-panel hidden" id="batchQueuePanel">
+        <div class="panel-head">
+          <span class="panel-title"><i class="fas fa-layer-group"></i><strong>سلسلة روابط</strong></span>
+          <button type="button" class="icon-btn ghost" id="closeBatchBtn" title="إغلاق"><i class="fas fa-times"></i></button>
         </div>
-        <textarea id="batchUrlsText" placeholder="ألصق روابط متتالية (رابط في كل سطر)..." rows="3"></textarea>
-        <div class="batch-actions">
-          <button type="button" class="btn-mobile-action" id="pasteAddBatchBtn"><i class="fas fa-paste"></i> <span>لصق وإضافة</span></button>
-          <button type="button" class="btn-mobile-action primary" id="startBatchBtn" disabled><i class="fas fa-play"></i> <span>بدء التحميل</span></button>
+        <p class="wl-desc" id="batchQueueHint">رابط في كل سطر — التحميل يتم واحداً بعد الآخر</p>
+        <textarea id="batchUrlsText" placeholder="https://..." rows="4"></textarea>
+        <div class="icon-row">
+          <button type="button" class="icon-fab" id="pasteAddBatchBtn" title="لصق وإضافة"><i class="fas fa-paste"></i></button>
+          <button type="button" class="icon-fab" id="batchAutoPasteBtn" title="لصق تلقائي"><i class="fas fa-clipboard"></i></button>
+          <button type="button" class="icon-fab primary" id="startBatchBtn" title="بدء" disabled><i class="fas fa-play"></i></button>
+          <button type="button" class="icon-fab" id="clearBatchBtn" title="مسح"><i class="fas fa-trash"></i></button>
         </div>
+        <p class="fav-page-meta" id="batchProgressHint"></p>
         <div class="batch-queue-list" id="batchQueueList"></div>
       </div>
 
-      <!-- Platform Tags -->
       <div class="platform-chips">
-        <span class="chip"><i class="fab fa-youtube"></i> YouTube</span>
-        <span class="chip"><i class="fab fa-tiktok"></i> TikTok</span>
-        <span class="chip"><i class="fab fa-instagram"></i> Instagram</span>
-        <span class="chip"><i class="fab fa-facebook"></i> Facebook</span>
-        <span class="chip"><i class="fab fa-twitter"></i> X / Twitter</span>
-        <span class="chip">+100 منصة</span>
+        <span class="chip" title="YouTube"><i class="fab fa-youtube"></i></span>
+        <span class="chip" title="TikTok"><i class="fab fa-tiktok"></i></span>
+        <span class="chip" title="Instagram"><i class="fab fa-instagram"></i></span>
+        <span class="chip" title="Facebook"><i class="fab fa-facebook"></i></span>
+        <span class="chip" title="X"><i class="fab fa-x-twitter"></i></span>
       </div>
 
-      <!-- Loading State -->
+      <div class="empty-hint" id="emptyHint">
+        <i class="fas fa-link"></i>
+        <p>ألصق الرابط ثم اضغط بحث</p>
+      </div>
+
       <div class="loading-state" id="loadingState">
         <div class="mobile-spinner"></div>
-        <p>جاري تحليل رابط الفيديو بالذكاء الاصطناعي...</p>
       </div>
 
-      <!-- Video Info Card -->
       <div class="mobile-video-card" id="videoCard">
         <div class="thumbnail-wrapper">
-          <img src="" id="thumbnailImg" alt="غلاف الفيديو">
+          <img src="" id="thumbnailImg" alt="">
           <span class="duration-badge" id="durationBadge">00:00</span>
         </div>
         <div class="video-details">
-          <h3 id="videoTitle">عنوان الفيديو</h3>
-          <p id="uploaderName">اسم القناة</p>
+          <h3 id="videoTitle"></h3>
+          <p id="uploaderName"></p>
         </div>
       </div>
 
-      <!-- Video Preview Player Card (مشاهدة الفيديو قبل التحميل) -->
-      <div class="mobile-video-preview-card hidden" id="videoPreviewCard" style="margin-top:12px; background:var(--bg-card); border-radius:14px; padding:14px; border:1px solid rgba(255,255,255,0.08);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:6px;">
-          <h4 style="margin:0; font-size:14px; color:var(--text-main);"><i class="fas fa-eye" style="color:var(--primary);"></i> <span>مشاهدة الفيديو قبل التحميل</span></h4>
-          <span id="globalSettingsBadge" style="font-size:11px; background:rgba(0,242,254,0.15); color:var(--primary); padding:4px 8px; border-radius:6px; font-weight:bold;">إعدادات عامة [الجودة: best | فيديو وصوت]</span>
+      <div class="glass-card preview-card hidden" id="videoPreviewCard">
+        <div class="panel-head">
+          <i class="fas fa-eye"></i>
+          <span class="mini-badge" id="globalSettingsBadge">best</span>
+          <button type="button" class="icon-btn ghost" id="refreshPreviewBtn" title="تحديث"><i class="fas fa-sync-alt"></i></button>
         </div>
-        
-        <div id="videoEmbedContainer" style="width:100%; min-height:200px; background:#000; border-radius:10px; overflow:hidden; position:relative; display:flex; align-items:center; justify-content:center;">
-          <p style="color:#64748b; font-size:12px;">جاري تحميل المعاينة المباشرة...</p>
-        </div>
-
-        <div style="display:flex; gap:8px; margin-top:10px;">
-          <button type="button" class="btn-mobile-secondary" id="refreshPreviewBtn" style="flex:1; padding:8px 12px; font-size:13px;">
-            <i class="fas fa-sync-alt"></i> <span>تحديث المعاينة</span>
-          </button>
-        </div>
+        <div id="videoEmbedContainer" class="preview-box"></div>
       </div>
 
-      <!-- Studio Panel (استوديو الإنتاج PRO - المطابق لنسخة البيسي 100%) -->
-      <div class="mobile-studio-card" id="studioPanel" style="margin-top:12px; background:var(--bg-card); border-radius:14px; padding:14px; border:1px solid rgba(255,255,255,0.08);">
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <h4 style="margin:0; font-size:15px; color:var(--text-main); font-weight:bold;">
-            <i class="fas fa-sliders-h" style="color:var(--primary);"></i> <span>استوديو الإنتاج</span>
-            <span style="background:linear-gradient(135deg,#ef4444,#f59e0b); color:#fff; font-size:10px; font-weight:800; padding:2px 7px; border-radius:4px; margin-right:6px;">PRO</span>
-          </h4>
+      <div class="glass-card studio-card" id="studioPanel">
+        <div class="icon-tabs" id="studioModeTabs">
+          <button type="button" class="icon-tab mobile-studio-tab active" data-mode="full" title="تحميل كامل"><i class="fas fa-film"></i></button>
+          <button type="button" class="icon-tab mobile-studio-tab" data-mode="clip" title="قص مقطع"><i class="fas fa-cut"></i></button>
+          <button type="button" class="icon-tab mobile-studio-tab" data-mode="image" title="صورة"><i class="fas fa-image"></i></button>
         </div>
-        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:12px; line-height:1.4;">
-          قص مقاطع دقيقة أو استخراج صور بجودة احترافية
-        </p>
 
-        <!-- 4 Main Studio Tabs -->
-        <div class="studio-tabs-row" id="studioModeTabs" style="display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-bottom:12px;">
+        <div class="studio-workspace hidden" id="clipWorkspace">
+          <div class="clip-stats">
+            <span id="clipVideoDurationLabel">00:00</span>
+            <strong id="clipDurationLabel">00:30</strong>
+            <span id="clipRangeLabel">00:00 → 00:30</span>
+          </div>
+          <div class="clip-dual-wrap">
+            <div class="clip-dual-legend">
+              <span class="clip-legend start"><i class="fas fa-circle"></i> <span data-i18n="start">البداية</span> <strong id="clipStartValue">00:00</strong></span>
+              <span class="clip-legend end"><i class="fas fa-circle"></i> <span data-i18n="end">النهاية</span> <strong id="clipEndValue">00:30</strong></span>
+            </div>
+            <div class="clip-dual-slider" id="clipDualSlider" dir="ltr">
+              <div class="clip-dual-rail"></div>
+              <div class="clip-dual-selection" id="clipDualSelection"></div>
+              <input type="range" class="clip-dual-handle start" id="clipStartRange" min="0" max="100" value="0" step="0.1" aria-label="بداية القص">
+              <input type="range" class="clip-dual-handle end" id="clipEndRange" min="0" max="100" value="30" step="0.1" aria-label="نهاية القص">
+            </div>
+          </div>
+          <div class="icon-row">
+            <button type="button" class="icon-fab" id="presetFirst30" title="أول 30ث">30s</button>
+            <button type="button" class="icon-fab" id="presetFullMin" title="دقيقة">1m</button>
+            <button type="button" class="icon-fab" id="presetMiddle" title="منتصف">½</button>
+            <button type="button" class="icon-fab" id="presetLast30" title="آخر 30ث">-30</button>
+          </div>
+          <div class="icon-row" id="clipTypeTabs">
+            <label class="icon-chip" title="مقطع مع صوت"><input type="radio" name="clipAudioMode" value="video-audio" checked><i class="fas fa-video"></i></label>
+            <label class="icon-chip" title="مقطع بدون صوت"><input type="radio" name="clipAudioMode" value="video-only"><i class="fas fa-film"></i></label>
+            <label class="icon-chip" title="مقطع صوت فقط"><input type="radio" name="clipAudioMode" value="audio"><i class="fas fa-music"></i></label>
           </div>
         </div>
 
-        <div class="studio-workspace image-workspace" id="imageWorkspace">
-          <div class="image-mode-grid">
-            <button type="button" class="image-card active" data-image-mode="thumbnail"><i class="fas fa-image"></i><span>الغلاف الاصلي</span></button>
-            <button type="button" class="image-card" data-image-mode="frame"><i class="fas fa-camera"></i><span>إطار من الفيديو</span></button>
+        <div class="studio-workspace hidden" id="imageWorkspace">
+          <div class="icon-row">
+            <button type="button" class="icon-fab active" id="imgModeThumb" data-image-mode="thumbnail" title="الصورة المصغرة"><i class="fas fa-image"></i></button>
+            <button type="button" class="icon-fab" id="imgModeFrame" data-image-mode="frame" title="لقطة من الفيديو"><i class="fas fa-camera"></i></button>
+          </div>
+          <div class="image-mode-caption" id="imageModeCaption">
+            <strong id="imageModeTitle">الصورة المصغرة</strong>
+            <small id="imageModeDesc">تحميل غلاف الفيديو الأصلي</small>
+          </div>
+          <div class="thumb-preview-box" id="thumbPreviewBox">
+            <img id="thumbPreviewImg" alt="غلاف الفيديو الأصلي">
+          </div>
+          <div class="hidden" id="frameSeekWrap">
+            <input type="range" id="frameSeekRange" min="0" max="100" value="5">
+            <span id="frameSeekLabel">00:05</span>
+          </div>
+          <div class="image-dim-panel" id="imageDimPanel">
+            <div class="image-dim-header">
+              <span class="image-dim-title"><i class="fas fa-ruler-combined"></i> <span data-i18n="imageDimensions">أبعاد وحجم الصورة</span></span>
+              <span class="aspect-badge" id="aspectBadge">📐 حر · حجم أصلي</span>
+            </div>
+            <span class="image-dim-label" data-i18n="aspectRatioLabel">نسبة الأبعاد (Aspect)</span>
+            <div class="dim-pills" id="aspectPills">
+              <button type="button" class="dim-pill active" data-aspect="default" title="حر"><i class="fas fa-expand"></i> <span data-i18n="aspectFree">حر</span></button>
+              <button type="button" class="dim-pill" data-aspect="16:9" title="16:9"><i class="fas fa-tv"></i> 16:9</button>
+              <button type="button" class="dim-pill" data-aspect="1:1" title="1:1"><i class="fas fa-square"></i> 1:1</button>
+              <button type="button" class="dim-pill" data-aspect="9:16" title="9:16"><i class="fas fa-mobile-alt"></i> 9:16</button>
+              <button type="button" class="dim-pill" data-aspect="4:5" title="4:5"><i class="fas fa-portrait"></i> 4:5</button>
+              <button type="button" class="dim-pill" data-aspect="21:9" title="21:9"><i class="fas fa-film"></i> 21:9</button>
+            </div>
+            <span class="image-dim-label" data-i18n="exportSizeLabel">حجم التصدير (Resolution)</span>
+            <div class="dim-pills" id="outputSizePills">
+              <button type="button" class="dim-pill active" data-size="original" title="أصلي"><span data-i18n="sizeOriginalShort">أصلي</span></button>
+              <button type="button" class="dim-pill" data-size="480" title="480px">480px</button>
+              <button type="button" class="dim-pill" data-size="720" title="720px">720px</button>
+              <button type="button" class="dim-pill" data-size="1080" title="1080px">1080px</button>
+              <button type="button" class="dim-pill" data-size="custom" title="مخصص"><span data-i18n="aspectCustomShort">مخصص</span></button>
+            </div>
+            <div class="custom-aspect-inputs hidden" id="customAspectInputs" dir="ltr">
+              <label class="custom-dim-field">Width<input type="number" id="customAspectWidth" value="1080" min="64" max="7680" step="1"></label>
+              <span class="custom-dim-x">×</span>
+              <label class="custom-dim-field">Height<input type="number" id="customAspectHeight" value="1080" min="64" max="7680" step="1"></label>
+            </div>
+            <span class="image-dim-label" data-i18n="maskShapeLabel">شكل ونوع الإطار:</span>
+            <div class="dim-pills" id="maskShapePills">
+              <button type="button" class="dim-pill active" data-shape="rect" title="مستطيل"><i class="fas fa-vector-square"></i> <span data-i18n="shapeRect">مستطيل</span></button>
+              <button type="button" class="dim-pill" data-shape="circle" title="دائري"><i class="fas fa-circle"></i> <span data-i18n="shapeCircle">دائري</span></button>
+              <button type="button" class="dim-pill" data-shape="rounded" title="حواف ناعمة"><i class="far fa-square"></i> <span data-i18n="shapeRounded">حواف ناعمة</span></button>
+            </div>
+          </div>
+          <div class="icon-row">
+            <button type="button" class="icon-fab img-fmt-btn active" data-fmt="png" title="PNG">PNG</button>
+            <button type="button" class="icon-fab img-fmt-btn" data-fmt="jpg" title="JPG">JPG</button>
+            <button type="button" class="icon-fab img-fmt-btn" data-fmt="webp" title="WEBP">W</button>
           </div>
         </div>
       </div>
 
-      <!-- Download Options Panel -->
-      <div class="mobile-options-card" id="downloadOptions">
-        <h4><i class="fas fa-sliders-h"></i> <span>خيارات الجودة</span></h4>
-        <div class="type-pills" id="downloadTypeTabs">
-          <button type="button" class="type-pill active" data-type="video-audio"><i class="fas fa-video"></i> <span>فيديو + صوت</span></button>
-          <button type="button" class="type-pill" data-type="video-only"><i class="fas fa-film"></i> <span>فيديو فقط</span></button>
-          <button type="button" class="type-pill" data-type="audio"><i class="fas fa-music"></i> <span>صوت MP3</span></button>
+      <div class="glass-card options-card" id="downloadOptions">
+        <div class="icon-tabs" id="downloadTypeTabs">
+          <button type="button" class="icon-tab type-pill active" data-type="video-audio" title="فيديو مع صوت"><i class="fas fa-video"></i></button>
+          <button type="button" class="icon-tab type-pill" data-type="video-only" title="فيديو بدون صوت"><i class="fas fa-film"></i></button>
+          <button type="button" class="icon-tab type-pill" data-type="audio" title="تحميل صوت فقط"><i class="fas fa-music"></i></button>
         </div>
         <div class="mobile-quality-grid" id="unifiedQualityGrid"></div>
-
-        <div class="mobile-filename-row">
-          <input type="text" id="filenameInput" placeholder="اسم الملف...">
-        </div>
-
-        <div class="mobile-download-btn-wrap" style="display:flex; gap:8px;">
-          <button type="button" class="btn-mobile-download" id="downloadBtn" style="flex:2;">
-            <i class="fas fa-download"></i> <span id="downloadBtnText">بدء التحميل المباشر</span>
-          </button>
-          <button type="button" class="btn-mobile-secondary hidden" id="quickPlayBtn" style="flex:1;">
-            <i class="fas fa-play"></i> <span>تشغيل الفيديو</span>
-          </button>
+        <input type="text" id="filenameInput" placeholder="VM">
+        <div class="icon-row">
+          <button type="button" class="icon-fab primary wide" id="downloadBtn" title="تحميل"><i class="fas fa-download"></i></button>
+          <button type="button" class="icon-fab hidden" id="quickPlayBtn" title="تشغيل"><i class="fas fa-play"></i></button>
         </div>
       </div>
 
-      <!-- Progress Container -->
-      <div class="mobile-progress-card" id="progressContainer">
-        <div class="progress-info-row">
-          <span>جاري التحميل...</span>
-          <strong id="progressPercent">0%</strong>
-        </div>
-        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
-        <p class="progress-detail" id="progressInfo"></p>
+      <div class="glass-card progress-card" id="progressContainer">
+        <strong id="progressPercent">0%</strong>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+        <p id="progressInfo"></p>
       </div>
 
-      <!-- Success Card -->
-      <div class="mobile-success-card" id="successMessage">
+      <div class="glass-card success-card" id="successMessage">
         <i class="fas fa-check-circle success-icon"></i>
-        <h3>تم التحميل بنجاح!</h3>
         <p id="successPath"></p>
-        <div style="display:flex; gap:8px; margin-top:12px;">
-          <button type="button" class="btn-mobile-primary" id="newDownloadBtn" style="flex:1;"><i class="fas fa-plus"></i> <span>تحميل فيديو جديد</span></button>
-          <button type="button" class="btn-mobile-secondary" id="openFolderBtn" style="flex:1;"><i class="fas fa-folder-open"></i> <span>فتح مكان الحفظ</span></button>
-          <button type="button" class="btn-mobile-secondary" id="playLastVideoBtn" style="flex:1;"><i class="fas fa-play"></i> <span>تشغيل الفيديو</span></button>
+        <div class="icon-row">
+          <button type="button" class="icon-fab primary" id="newDownloadBtn" title="جديد"><i class="fas fa-plus"></i></button>
+          <button type="button" class="icon-fab" id="openFolderBtn" title="المجلد"><i class="fas fa-folder-open"></i></button>
+          <button type="button" class="icon-fab" id="playLastVideoBtn" title="تشغيل"><i class="fas fa-play"></i></button>
         </div>
       </div>
     </section>
 
-    <!-- History Tab View -->
+    <section class="tab-view" id="favoritesTab">
+      <div class="glass-card">
+        <div class="panel-head">
+          <i class="fas fa-star"></i>
+          <button type="button" class="icon-fab" id="favoritesGlobalBellBtn" title="كل الإشعارات">
+            <i class="fas fa-bell"></i>
+            <span class="nav-badge hidden" id="favoritesGlobalBellCount">0</span>
+          </button>
+          <button type="button" class="icon-fab" id="checkAllFavoritesBtn" title="فحص الكل"><i class="fas fa-sync-alt"></i></button>
+        </div>
+        <textarea id="favoriteChannelInput" rows="2" placeholder="https://www.youtube.com/@"></textarea>
+        <div class="icon-row">
+          <button type="button" class="icon-fab" id="pasteFavoriteBtn" title="لصق"><i class="fas fa-paste"></i></button>
+          <button type="button" class="icon-fab primary" id="addFavoriteBtn" title="إضافة"><i class="fas fa-plus"></i></button>
+        </div>
+        <div class="fav-pager" id="favoritesPager">
+          <button type="button" class="icon-fab" id="favPrevPage" title="السابق"><i class="fas fa-angle-right"></i></button>
+          <strong id="favPageRange">1–100</strong>
+          <button type="button" class="icon-fab" id="favNextPage" title="التالي"><i class="fas fa-angle-left"></i></button>
+        </div>
+        <p class="fav-page-meta" id="favPageMeta"></p>
+        <div id="favoritesGlobalInbox" class="hidden"></div>
+        <div id="favoritesList" class="list-stack"></div>
+      </div>
+    </section>
+
+    <section class="tab-view" id="watchlaterTab">
+      <div class="glass-card">
+        <div class="panel-head">
+          <span class="panel-title">
+            <i class="fas fa-clock"></i>
+            <strong id="watchLaterTitleLabel">للمشاهدة لاحقاً</strong>
+          </span>
+        </div>
+        <p class="wl-desc" id="watchLaterDesc">احفظ روابط تريد مشاهدتها لاحقاً حسب النوع والمنصة والقناة. اضغط الرابط لفتحه في المتصفح.</p>
+        <input type="url" id="watchLaterUrlInput" placeholder="الصق رابط الفيديو أو المقطع هنا">
+        <input type="text" id="watchLaterTitleInput" placeholder="عنوان اختياري">
+        <input type="url" id="watchLaterChannelInput" placeholder="رابط القناة (اختياري) — يفتح في المتصفح">
+        <select id="watchLaterCategorySelect" aria-label="category"></select>
+        <div class="icon-row">
+          <button type="button" class="icon-fab" id="pasteWatchLaterBtn" title="لصق"><i class="fas fa-paste"></i></button>
+          <button type="button" class="icon-fab primary" id="addWatchLaterBtn" title="حفظ"><i class="fas fa-plus"></i></button>
+        </div>
+        <div class="watchlater-filters" id="watchLaterFilters"></div>
+        <div class="fav-pager" id="watchLaterPager">
+          <button type="button" class="icon-fab" id="wlPrevPage" title="السابق"><i class="fas fa-angle-right"></i></button>
+          <strong id="wlPageRange">1–100</strong>
+          <button type="button" class="icon-fab" id="wlNextPage" title="التالي"><i class="fas fa-angle-left"></i></button>
+        </div>
+        <p class="fav-page-meta" id="wlPageMeta"></p>
+        <div id="watchLaterList" class="list-stack"></div>
+      </div>
+    </section>
+
     <section class="tab-view" id="historyTab">
-      <div class="section-title"><h3><i class="fas fa-history"></i> <span>سجل التحميلات</span></h3></div>
-      <div class="history-list" id="historyList"></div>
+      <div class="glass-card">
+        <div class="panel-head">
+          <i class="fas fa-history"></i>
+          <button type="button" class="icon-btn ghost" id="clearHistoryBtn" title="مسح السجل"><i class="fas fa-trash"></i></button>
+        </div>
+        <div id="historyList" class="list-stack"></div>
+      </div>
     </section>
 
-    <!-- Platforms Tab View -->
     <section class="tab-view" id="platformsTab">
-      <div class="section-title"><h3><i class="fas fa-globe"></i> <span>المنصات المدعومة (+100)</span></h3></div>
-      <div class="platforms-grid" id="platformsGrid"></div>
+      <div id="platformsGrid" class="platforms-grid"></div>
     </section>
 
-    <!-- Settings Tab View -->
     <section class="tab-view" id="settingsTab">
-      <div class="section-title"><h3><i class="fas fa-cog"></i> <span>إعدادات الجوال الشاملة</span></h3></div>
-      
-      <div class="mobile-settings-card">
-        <!-- 1. Language -->
+      <div class="glass-card settings-card">
         <div class="setting-row">
-          <label><i class="fas fa-language"></i> <span>تغيير اللغة</span></label>
+          <i class="fas fa-language" title="اللغة"></i>
           <select id="languageSelect">
-            <option value="ar">العربية (Arabic)</option>
-            <option value="fr">Français (French)</option>
-            <option value="en">English (English)</option>
+            <option value="ar">AR</option>
+            <option value="fr">FR</option>
+            <option value="en">EN</option>
           </select>
         </div>
-
-        <!-- 2. Default Quality -->
         <div class="setting-row">
-          <label><i class="fas fa-film"></i> <span>جودة الفيديو الافتراضية</span></label>
-          <select id="defaultQualitySelect">
-            <option value="best">أفضل جودة متاحة (Best HD)</option>
-            <option value="1080">1080p Full HD</option>
+          <i class="fas fa-hd" title="جودة الفيديو الافتراضية"></i>
+          <select id="defaultQualitySelect" title="جودة الفيديو الافتراضية">
+            <option value="best" data-i18n="qualityBest">أقصى جودة متاحة (بدون سقف — حتى 8K)</option>
+            <option value="144">144p</option>
+            <option value="240">240p</option>
+            <option value="360">360p</option>
+            <option value="480">480p</option>
             <option value="720">720p HD</option>
-            <option value="audio">تحميل الصوت فقط كـ MP3</option>
+            <option value="1080">1080p Full HD</option>
+            <option value="1440">1440p · 2K</option>
+            <option value="2160">2160p · 4K UHD</option>
+            <option value="4320">4320p · 8K</option>
           </select>
         </div>
-
-        <!-- Default Download Path & Browse -->
-        <div class="setting-row" style="flex-direction:column; align-items:flex-start;">
-          <label style="margin-bottom:6px;"><i class="fas fa-folder"></i> <span>مجلد التحميل الافتراضي</span></label>
-          <div style="display:flex; gap:6px; width:100%;">
-            <input type="text" id="customDownloadPath" value="B:\" style="flex:1; background:var(--bg-input); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:8px 12px; color:var(--text-main); font-size:13px;">
-            <button type="button" class="btn-mobile-secondary" id="browseDownloadPathBtn" style="padding:8px 14px;">
-              <i class="fas fa-folder-open"></i> <span>تصفح</span>
-            </button>
-          </div>
-          <div style="display:flex; gap:6px; width:100%; margin-top:8px;">
-            <button type="button" class="btn-mobile-secondary" id="choosePathBtn" style="flex:1; font-size:12px;">
-              <i class="fas fa-search-location"></i> <span>اختيار المسار</span>
-            </button>
-            <button type="button" class="btn-mobile-secondary" id="openLastVideoFolderBtn" style="flex:1; font-size:12px;">
-              <i class="fas fa-folder-open"></i> <span>فتح مجلد آخر فيديو</span>
-            </button>
-          </div>
+        <div class="setting-row">
+          <i class="fas fa-tachometer-alt" title="أقصى سرعة تنزيل"></i>
+          <select id="settingSpeedLimit" title="أقصى سرعة تنزيل">
+            <option value="unlimited" data-i18n="speedUnlimited">بدون حد (أقصى سرعة فائقة)</option>
+            <option value="10M" data-i18n="speedLimit10M">10 MB/s (سريع جداً)</option>
+            <option value="5M" data-i18n="speedLimit5M">5 MB/s (متوسط معقول)</option>
+            <option value="2M" data-i18n="speedLimit2M">2 MB/s (توفير الباقة)</option>
+            <option value="1M" data-i18n="speedLimit1M">1 MB/s (خلفية النظام)</option>
+          </select>
         </div>
-
-        <!-- 3. Turbo Mode -->
-        <div class="setting-row toggle">
-          <label><i class="fas fa-tachometer-alt"></i> <span>وضع التوربو (تحميل أسرع)</span></label>
+        <div class="setting-row">
+          <i class="fas fa-redo" title="إعادة المحاولات التلقائية عند الانقطاع"></i>
+          <select id="settingAutoRetryCount" title="إعادة المحاولات التلقائية عند الانقطاع">
+            <option value="10" data-i18n="autoRetry10">10 محاولات تلقائية (استقرار فائق)</option>
+            <option value="5" data-i18n="autoRetry5">5 محاولات</option>
+            <option value="3" data-i18n="autoRetry3">3 محاولات</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <i class="fas fa-folder" title="المسار"></i>
+          <input type="text" id="customDownloadPath" value="">
+          <button type="button" class="icon-btn" id="browseDownloadPathBtn" title="تصفح"><i class="fas fa-folder-open"></i></button>
+        </div>
+        <label class="setting-row toggle" for="turboMode" title="وضع التوربو (تحميل أسرع)">
+          <i class="fas fa-bolt" aria-hidden="true"></i>
+          <span data-i18n="turboMode">وضع التوربو (تحميل أسرع)</span>
           <input type="checkbox" id="turboMode" checked>
-        </div>
-
-        <!-- 4. Audio Enhancer HD -->
-        <div class="setting-row toggle">
-          <label><i class="fas fa-sliders-h"></i> <span>تحسين جودة الصوت تلقائياً (Audio Enhancer HD)</span></label>
+        </label>
+        <label class="setting-row toggle" for="audioEnhanceToggle" title="تحسين جودة الصوت تلقائياً">
+          <i class="fas fa-magic" aria-hidden="true"></i>
+          <span data-i18n="audioEnhanceTitle">تحسين جودة الصوت تلقائياً</span>
           <input type="checkbox" id="audioEnhanceToggle" checked>
-        </div>
-
-        <!-- 5. Auto Clipboard Detection -->
-        <div class="setting-row toggle">
-          <label><i class="fas fa-paste"></i> <span>اكتشاف الروابط من الحافظة تلقائياً</span></label>
+        </label>
+        <label class="setting-row toggle" for="autoClipboardToggle" title="اكتشاف الروابط من الحافظة تلقائياً">
+          <i class="fas fa-clipboard" aria-hidden="true"></i>
+          <span data-i18n="clipboardAutoDetect">اكتشاف الروابط من الحافظة تلقائياً</span>
           <input type="checkbox" id="autoClipboardToggle" checked>
-        </div>
-
-        <!-- 6. Completion Notifications -->
-        <div class="setting-row toggle">
-          <label><i class="fas fa-bell"></i> <span>إشعارات اكتمال التحميل</span></label>
+        </label>
+        <label class="setting-row toggle" for="notificationsToggle" title="إشعارات اكتمال التحميل">
+          <i class="fas fa-bell" aria-hidden="true"></i>
+          <span data-i18n="notifications">إشعارات اكتمال التحميل</span>
           <input type="checkbox" id="notificationsToggle" checked>
-        </div>
-
-        <!-- 7. Clear Cache -->
-        <div class="setting-row" style="margin-top:10px;">
-          <button type="button" class="btn-mobile-secondary" id="clearCacheBtn" style="width:100%;">
-            <i class="fas fa-trash-alt"></i> <span>مسح الذاكرة المؤقتة والسجل</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Automatic Sequential Batch Queue Card -->
-      <div class="mobile-settings-card" style="margin-top:14px;">
-        <h4 style="margin-bottom:6px; color:var(--primary); font-size:15px;">
-          <i class="fas fa-list-ol"></i> <span>تحميل سلسلة روابط متتالية تلقائياً</span>
-        </h4>
-        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px; line-height:1.5;">
-          ألصق عدة روابط متتالية (رابط في كل سطر). وسيتم تنزيل كل رابط تلقائياً بعد اكتمال السابق بنفس الإعدادات:
-        </p>
-        <textarea id="settingsBatchUrlsText" rows="4" placeholder="https://youtube.com/watch?v=...&#10;https://tiktok.com/@user/video/...&#10;https://instagram.com/p/..." style="width:100%; background:var(--bg-input); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px; color:var(--text-main); font-size:12px; resize:vertical; font-family:monospace; margin-bottom:8px;"></textarea>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <button type="button" class="btn-mobile-secondary" id="settingsPasteAddBatchBtn">
-            <i class="fas fa-paste"></i> <span>لصق وإضافة للقائمة</span>
-          </button>
-          <button type="button" class="btn-mobile-primary" id="settingsStartBatchBtn" disabled>
-            <i class="fas fa-play"></i> <span>بدء تحميل السلسلة تلقائياً</span>
-          </button>
-          <button type="button" class="btn-mobile-secondary" id="settingsClearBatchBtn">
-            <i class="fas fa-trash-alt"></i> <span>إفراغ القائمة</span>
-          </button>
-        </div>
-        <div id="settingsBatchQueueList" style="margin-top:10px;"></div>
-      </div>
-
-      <!-- System Health & Auto Repair Card -->
-      <div class="mobile-settings-card" style="margin-top:14px;">
-        <h4 style="margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
-          <span><i class="fas fa-heartbeat"></i> <span>صحة النظام والأدوات</span></span>
-          <button type="button" class="btn-mobile-primary" id="repairSystemBtn" style="padding:4px 12px; font-size:12px;">
-            <i class="fas fa-wrench"></i> <span>إصلاح الآن</span>
-          </button>
-        </h4>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;" id="systemHealthGrid">
-          <div style="padding:10px; background:var(--bg-input); border-radius:8px; text-align:center;">
-            <span style="font-size:12px; color:var(--text-secondary); display:block;">محرك yt-dlp</span>
-            <strong id="ytDlpHealth" style="color:#22c55e; font-size:13px;"><i class="fas fa-check-circle"></i> جاهز ومحين</strong>
+        </label>
+        <div class="setting-row network-mode" title="شبكة التحميل">
+          <i class="fas fa-globe" aria-hidden="true"></i>
+          <div class="network-mode-btns">
+            <button type="button" class="net-choice" id="downloadWifiOnlyBtn" data-net="wifi" data-i18n-title="downloadWifiOnly" title="واي فاي فقط">
+              <i class="fas fa-wifi" aria-hidden="true"></i>
+              <span data-i18n="downloadWifiOnly">واي فاي فقط</span>
+            </button>
+            <button type="button" class="net-choice" id="downloadCellularBtn" data-net="cellular" data-i18n-title="downloadCellular" title="باقة النت">
+              <i class="fas fa-signal" aria-hidden="true"></i>
+              <span data-i18n="downloadCellular">باقة النت</span>
+            </button>
+            <button type="button" class="net-choice active" id="downloadBothBtn" data-net="both" data-i18n-title="downloadBoth" title="الاثنين معاً">
+              <span class="net-dual-icons" aria-hidden="true">
+                <i class="fas fa-wifi"></i>
+                <i class="fas fa-signal"></i>
+              </span>
+              <span data-i18n="downloadBoth">الاثنين معاً</span>
+            </button>
           </div>
-          <div style="padding:10px; background:var(--bg-input); border-radius:8px; text-align:center;">
-            <span style="font-size:12px; color:var(--text-secondary); display:block;">محرك ffmpeg</span>
-            <strong id="ffmpegHealth" style="color:#22c55e; font-size:13px;"><i class="fas fa-check-circle"></i> جاهز وفعال</strong>
+        </div>
+        <div class="scheduler-block">
+          <div class="setting-row">
+            <i class="fas fa-clock" aria-hidden="true"></i>
+            <span data-i18n="schedulerTitle">جدولة التحميل التلقائي</span>
           </div>
+          <p class="setting-hint" data-i18n="schedulerDesc">حدد وقتاً مستقبلياً لتنزيل سلسلة الروابط تلقائياً (مثلاً ليلاً):</p>
+          <div class="setting-row">
+            <input type="time" id="settingScheduleTime" title="وقت البدء">
+            <input type="number" id="settingScheduleDelayMin" min="1" data-i18n-placeholder="schedulerDelayPlaceholder" placeholder="أو بعد دقائق (مثلاً 30)">
+            <button type="button" class="icon-fab primary" id="settingStartScheduleBtn" data-i18n-title="schedulerBtn" title="تفعيل الجدولة"><i class="fas fa-calendar-check"></i></button>
+            <button type="button" class="icon-fab" id="settingCancelScheduleBtn" data-i18n-title="schedulerCancel" title="إلغاء الجدولة"><i class="fas fa-times"></i></button>
+          </div>
+          <div id="settingScheduleStatus" class="schedule-status"></div>
+        </div>
+        <div class="icon-row">
+          <button type="button" class="icon-fab" id="clearCacheBtn" title="مسح الذاكرة المؤقتة"><i class="fas fa-trash-alt"></i></button>
+          <button type="button" class="icon-fab" id="repairSystemBtn" title="إصلاح الأخطاء وفحص النظام"><i class="fas fa-wrench"></i></button>
+          <button type="button" class="icon-fab" id="openLastVideoFolderBtn" title="آخر مجلد"><i class="fas fa-folder"></i></button>
+        </div>
+        <div class="health-row">
+          <span id="ytDlpHealth"><i class="fas fa-check-circle"></i></span>
+          <span id="ffmpegHealth"><i class="fas fa-check-circle"></i></span>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Native Bottom Mobile Navigation Bar -->
+  <div id="pasteModal" class="paste-modal hidden">
+    <div class="paste-modal-card">
+      <p id="pasteModalHint">الصق الروابط هنا</p>
+      <textarea id="pasteModalText" rows="5" placeholder="Ctrl+V"></textarea>
+      <div class="icon-row">
+        <button type="button" class="icon-fab" id="pasteModalCancel" title="إلغاء"><i class="fas fa-times"></i></button>
+        <button type="button" class="icon-fab primary" id="pasteModalConfirm" title="تأكيد"><i class="fas fa-check"></i></button>
+      </div>
+    </div>
+  </div>
+
   <nav class="mobile-bottom-nav">
-    <button type="button" class="nav-button active" data-tab="downloader">
-      <i class="fas fa-download"></i>
-      <span>التحميل</span>
-    </button>
-    <button type="button" class="nav-button" data-tab="history">
-      <i class="fas fa-history"></i>
-      <span>السجل</span>
-    </button>
-    <button type="button" class="nav-button" data-tab="platforms">
-      <i class="fas fa-globe"></i>
-      <span>المنصات</span>
-    </button>
-    <button type="button" class="nav-button" data-tab="settings">
-      <i class="fas fa-cog"></i>
-      <span>الإعدادات</span>
-    </button>
+    <button type="button" class="nav-button active" data-tab="downloader" title="الرئيسية"><i class="fas fa-house"></i></button>
+    <button type="button" class="nav-button" data-tab="favorites" title="مفضلة"><i class="fas fa-star"></i><span class="nav-badge hidden" id="mobileFavCount">0</span></button>
+    <button type="button" class="nav-button" data-tab="watchlater" title="لاحقاً"><i class="fas fa-clock"></i><span class="nav-badge hidden" id="mobileWlCount">0</span></button>
+    <button type="button" class="nav-button" data-tab="history" title="سجل"><i class="fas fa-history"></i></button>
+    <button type="button" class="nav-button" data-tab="platforms" title="منصات"><i class="fas fa-globe"></i></button>
+    <button type="button" class="nav-button" data-tab="settings" title="إعدادات"><i class="fas fa-cog"></i></button>
   </nav>
 
-  <script src="i18n.js"></script>
-  <script src="app.js?v=2.0.0"></script>
+  </div>
+  <script src="i18n.js?v=16"></script>
+  <script src="app.js?v=4.1.32"></script>
 </body>
 </html>

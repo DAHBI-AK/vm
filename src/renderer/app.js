@@ -739,6 +739,7 @@ const elements = {
   
   // Navigation
   navItems: document.querySelectorAll('.nav-item'),
+  mobileDockBtns: document.querySelectorAll('.mobile-dock-btn'),
   sections: document.querySelectorAll('.section'),
   pageTitle: document.getElementById('pageTitle'),
   platformsGrid: document.getElementById('platformsGrid'),
@@ -1164,7 +1165,7 @@ function setStudioMode(mode) {
   if (mode === 'image') {
     updateImageWorkspaceUI();
   } else {
-    refreshUnifiedQualityGrid();
+    refreshUnifiedQualityGrid(true);
   }
 
   updateQualityHint();
@@ -2173,13 +2174,20 @@ async function startDownload() {
       ? t('progressThumbnail')
       : `${t('progressFrame')} ${formatTimecode(frameTime)}...`;
   } else if (studioMode === 'clip') {
-    if (!selectedFormat || !selectedHeight) {
-      showStatus(t('errSelectClipQuality'), 'error');
+    clampClipRange();
+    if (clipEnd <= clipStart) {
+      showStatus(t('errInvalidClipRange'), 'error');
       return;
     }
 
-    clampClipRange();
-    const clipType = getActiveDownloadType();
+    if (!selectedHeight) {
+      selectedHeight = 'best';
+    }
+    if (!selectedFormat) {
+      selectedFormat = String(selectedHeight);
+    }
+
+    const clipType = getActiveDownloadType() === 'video-only' ? 'video-only' : 'video-audio';
 
     downloadOptions = {
       mode: 'clip',
@@ -2189,7 +2197,7 @@ async function startDownload() {
       hasAudio: clipType === 'video-audio',
       clipStart,
       clipEnd,
-      filename: `${filename}${extension}`
+      filename: `${filename}.mp4`
     };
     historyType = clipType;
     progressMessage = `${t('progressClipExport')} ${formatShortTime(clipStart)} → ${formatShortTime(clipEnd)}...`;
@@ -2741,9 +2749,10 @@ function updateFavoritesGlobalBell() {
 }
 
 function updateFavoritesNavBadge() {
-  const badge = document.getElementById('navFavoritesBadge');
   const total = getFavoritesTotalUnread();
-  if (badge) {
+  ['navFavoritesBadge', 'mobileFavBadge'].forEach((id) => {
+    const badge = document.getElementById(id);
+    if (!badge) return;
     if (total > 0) {
       badge.hidden = false;
       badge.textContent = total > 99 ? '99+' : String(total);
@@ -2751,7 +2760,7 @@ function updateFavoritesNavBadge() {
       badge.hidden = true;
       badge.textContent = '0';
     }
-  }
+  });
   updateFavoritesGlobalBell();
 }
 
@@ -3598,16 +3607,18 @@ function saveWatchLaterItems() {
 }
 
 function updateWatchLaterNavBadge() {
-  const badge = document.getElementById('navWatchLaterBadge');
-  if (!badge) return;
   const total = watchLaterItems.length;
-  if (total > 0) {
-    badge.hidden = false;
-    badge.textContent = total > 999 ? '999+' : String(total);
-  } else {
-    badge.hidden = true;
-    badge.textContent = '0';
-  }
+  ['navWatchLaterBadge', 'mobileWlBadge'].forEach((id) => {
+    const badge = document.getElementById(id);
+    if (!badge) return;
+    if (total > 0) {
+      badge.hidden = false;
+      badge.textContent = total > 999 ? '999+' : String(total);
+    } else {
+      badge.hidden = true;
+      badge.textContent = '0';
+    }
+  });
 }
 
 function fillWatchLaterCategorySelect() {
@@ -3886,6 +3897,12 @@ function initWatchLater() {
 }
 
 // Navigation
+function syncMobileDock(section) {
+  elements.mobileDockBtns?.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.section === section);
+  });
+}
+
 function navigateTo(section) {
   // Update nav items
   elements.navItems.forEach(item => {
@@ -3894,6 +3911,7 @@ function navigateTo(section) {
       item.classList.add('active');
     }
   });
+  syncMobileDock(section);
   
   // Update sections
   elements.sections.forEach(sec => {
@@ -5393,6 +5411,12 @@ elements.navItems.forEach(item => {
   item.addEventListener('click', (e) => {
     e.preventDefault();
     navigateTo(item.dataset.section);
+  });
+});
+elements.mobileDockBtns?.forEach((btn) => {
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateTo(btn.dataset.section);
   });
 });
 

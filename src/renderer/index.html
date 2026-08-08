@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>VM — Downloader</title>
   <link rel="icon" type="image/png" href="assets/vm-icon.png">
   <link rel="apple-touch-icon" href="assets/vm-icon.png">
@@ -972,6 +972,29 @@
       </div>
     </div>
   </div>
+
+  <nav class="mobile-dock" id="mobileDock" aria-label="VM">
+    <button type="button" class="mobile-dock-btn active" data-section="downloader" data-i18n-title="navDownload" title="التحميل">
+      <i class="fas fa-download"></i>
+    </button>
+    <button type="button" class="mobile-dock-btn" data-section="favorites" data-i18n-title="navFavorites" title="المفضلة">
+      <i class="fas fa-star"></i>
+      <span class="mobile-dock-badge" id="mobileFavBadge" hidden>0</span>
+    </button>
+    <button type="button" class="mobile-dock-btn" data-section="watchlater" data-i18n-title="navWatchLater" title="للمشاهدة لاحقاً">
+      <i class="fas fa-clock"></i>
+      <span class="mobile-dock-badge" id="mobileWlBadge" hidden>0</span>
+    </button>
+    <button type="button" class="mobile-dock-btn" data-section="history" data-i18n-title="navHistory" title="السجل">
+      <i class="fas fa-history"></i>
+    </button>
+    <button type="button" class="mobile-dock-btn" data-section="platforms" data-i18n-title="navPlatforms" title="المنصات">
+      <i class="fas fa-globe"></i>
+    </button>
+    <button type="button" class="mobile-dock-btn" data-section="settings" data-i18n-title="navSettings" title="الإعدادات">
+      <i class="fas fa-cog"></i>
+    </button>
+  </nav>
 
   <script src="i18n.js"></script>
   <script src="app.js"></script>

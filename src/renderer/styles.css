@@ -5084,4 +5084,194 @@ button.tag:hover {
   }
 }
 
+/* —— Mobile Pro layout: icon-first, same colors, all features —— */
+.mobile-dock {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  html, body {
+    overflow: auto;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .app-container {
+    flex-direction: column;
+    min-height: 100dvh;
+    height: auto;
+  }
+
+  .sidebar {
+    display: none !important;
+  }
+
+  .main-content {
+    width: 100%;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    padding: 12px 12px calc(92px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 4px 12px;
+  }
+
+  .app-header h2 {
+    font-size: 18px;
+  }
+
+  .status-bar {
+    width: 100%;
+    font-size: 12px;
+  }
+
+  .mobile-dock {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    padding: 8px 10px;
+    border-radius: 22px;
+    background: rgba(15, 23, 42, 0.92);
+    border: 1px solid rgba(248, 113, 113, 0.28);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+    backdrop-filter: blur(18px);
+  }
+
+  .mobile-dock-btn {
+    position: relative;
+    flex: 1;
+    height: 46px;
+    border: none;
+    border-radius: 16px;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    transition: var(--transition);
+  }
+
+  .mobile-dock-btn.active {
+    color: #fff;
+    background: linear-gradient(135deg, #ef4444, #b91c1c);
+    box-shadow: 0 8px 18px rgba(239, 68, 68, 0.35);
+  }
+
+  .mobile-dock-badge {
+    position: absolute;
+    top: 4px;
+    inset-inline-end: 10px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #fbbf24;
+    color: #111827;
+    font-size: 9px;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-fetch span,
+  .btn-paste span,
+  .btn-clear span,
+  .studio-tab span,
+  .download-type-tab span,
+  .btn-download span,
+  .btn-browse span,
+  .preset-btn,
+  .clip-toggle span,
+  .format-pill span,
+  .image-source-pill span,
+  .batch-actions span,
+  .favorites-add-actions span,
+  .watchlater-add-actions span,
+  .btn-fav-check-all span,
+  .btn-fav-paste span,
+  .btn-fav-add span {
+    display: none !important;
+  }
+
+  .preset-btn {
+    display: inline-flex !important;
+    min-width: 44px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .preset-btn[data-preset="intro"]::before { content: "30s"; font-size: 11px; font-weight: 800; }
+  .preset-btn[data-preset="minute"]::before { content: "1m"; font-size: 11px; font-weight: 800; }
+  .preset-btn[data-preset="middle"]::before { content: "½"; font-size: 14px; font-weight: 800; }
+  .preset-btn[data-preset="last30"]::before { content: "-30"; font-size: 11px; font-weight: 800; }
+
+  .studio-mode-tabs,
+  .download-type-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px;
+  }
+
+  .studio-tab,
+  .download-type-tab,
+  .btn-fetch,
+  .btn-paste,
+  .btn-clear {
+    min-height: 46px;
+    justify-content: center;
+    padding: 0 10px;
+  }
+
+  .input-group {
+    flex-wrap: wrap;
+  }
+
+  .input-group input {
+    flex: 1 1 100%;
+  }
+
+  .url-tools-icons,
+  .batch-actions,
+  .favorites-add-actions,
+  .watchlater-add-actions {
+    justify-content: center;
+  }
+
+  .quality-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .welcome-panel p,
+  .options-hint,
+  .favorites-desc,
+  .watchlater-desc,
+  .studio-header p,
+  .batch-desc {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .studio-header h4,
+  .options-group h4,
+  .favorites-header h3,
+  .watchlater-header h3 {
+    font-size: 16px;
+  }
+}
+
 
